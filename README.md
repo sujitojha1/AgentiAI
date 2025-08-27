@@ -15,4 +15,4 @@ An agentic AI assistant understands your needs and suggests relevant products, a
 This repository hosts experiments with agentic AI for shopping. The interface and models are under active development.
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the Apache License.
