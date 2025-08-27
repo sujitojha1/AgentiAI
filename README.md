@@ -1,5 +1,7 @@
 # Agentic AI Shopping Assistant
 
+Experimenting with Agentic AI
+
 ## Introduction
 Personalized fashion shopping is great, but jumping between sites is slow and limits your options. It's a real time sink for shoppers seeking the perfect outfit.
 
