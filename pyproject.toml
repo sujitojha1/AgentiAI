@@ -7,6 +7,8 @@ requires-python = ">=3.11"
 dependencies = [
     "crawl4ai>=0.8.6",
     "ddgs>=9.14.4",
+    "fastmcp>=3.3.1",
+    "mcp>=1.27.1",
     "pydantic>=2.13.4",
     "tavily>=1.1.0",
 ]
