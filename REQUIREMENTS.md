@@ -99,17 +99,17 @@ append to history, iterate
 
 ### FR-02 Pydantic Schemas
 
-**Reference**: [ISSUE-4] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-4] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-02.1 | The system shall define a `MemoryItem` Pydantic v2 model with fields: kind in {fact, preference, tool_outcome, scratchpad}, keywords, descriptor, value, artifact_id. | Must Have | ⬜ |
-| FR-02.2 | The system shall define an `Artifact` Pydantic v2 model with content-addressable handle, content_type, size_bytes, descriptor. | Must Have | ⬜ |
-| FR-02.3 | The system shall define a `Goal` Pydantic v2 model with fields: id, text, done: bool, attach_artifact_id. | Must Have | ⬜ |
-| FR-02.4 | The system shall define an `Observation` Pydantic v2 model containing goals: list[Goal]. | Must Have | ⬜ |
-| FR-02.5 | The system shall define a `ToolCall` Pydantic v2 model with fields: name, arguments: dict. | Must Have | ⬜ |
-| FR-02.6 | The system shall define a `DecisionOutput` Pydantic v2 model where exactly one of answer or tool_call is populated. | Must Have | ⬜ |
-| FR-02.7 | All inter-role data shall be exchanged exclusively via the Pydantic v2 schemas defined in schemas.py. | Must Have | ⬜ |
+| FR-02.1 | The system shall define a `MemoryItem` Pydantic v2 model with fields: kind in {fact, preference, tool_outcome, scratchpad}, keywords, descriptor, value, artifact_id. | Must Have | ✅ |
+| FR-02.2 | The system shall define an `Artifact` Pydantic v2 model with content-addressable handle, content_type, size_bytes, descriptor. | Must Have | ✅ |
+| FR-02.3 | The system shall define a `Goal` Pydantic v2 model with fields: id, text, done: bool, attach_artifact_id. | Must Have | ✅ |
+| FR-02.4 | The system shall define an `Observation` Pydantic v2 model containing goals: list[Goal]. | Must Have | ✅ |
+| FR-02.5 | The system shall define a `ToolCall` Pydantic v2 model with fields: name, arguments: dict. | Must Have | ✅ |
+| FR-02.6 | The system shall define a `DecisionOutput` Pydantic v2 model where exactly one of answer or tool_call is populated. | Must Have | ✅ |
+| FR-02.7 | All inter-role data shall be exchanged exclusively via the Pydantic v2 schemas defined in schemas.py. | Must Have | ✅ |
 
 ---
 
@@ -301,7 +301,7 @@ append to history, iterate
 | Req ID | Description | GitHub Issue | Source File | Verification Method | Status |
 |--------|-------------|-------------|-------------|---------------------|--------|
 | FR-01.1–5 | Project Setup | [#3](https://github.com/sujitojha1/AgentiAI/issues/3) | .env, .gitignore, pyproject.toml | Manual setup check | ⬜ |
-| FR-02.1–7 | Pydantic Schemas | [#4](https://github.com/sujitojha1/AgentiAI/issues/4) | schemas.py | Unit test schema instantiation | ⬜ |
+| FR-02.1–7 | Pydantic Schemas | [#4](https://github.com/sujitojha1/AgentiAI/issues/4) | schemas.py | Unit test schema instantiation | ✅ |
 | FR-03.1–5 | Memory Module | [#5](https://github.com/sujitojha1/AgentiAI/issues/5) | memory.py | Query C (durable memory) | ⬜ |
 | FR-04.1–5 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ⬜ |
 | FR-05.1–4 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ⬜ |
