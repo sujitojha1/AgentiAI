@@ -115,15 +115,15 @@ append to history, iterate
 
 ### FR-03 Memory Module
 
-**Reference**: [ISSUE-5] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-5] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-03.1 | The Memory module shall expose a `read(query, history)` method returning a list of relevant MemoryItem hits. | Must Have | ⬜ |
-| FR-03.2 | The Memory module shall expose a `record_outcome()` method that persists a new MemoryItem to state/memory.json. | Must Have | ⬜ |
-| FR-03.3 | When classifying an ambiguous write, the Memory module shall make a single LLM call to determine the correct kind. | Must Have | ⬜ |
-| FR-03.4 | The Memory module shall persist all stored items to `state/memory.json` so that data survives process restarts. | Must Have | ⬜ |
-| FR-03.5 | The Memory module shall expose `filter()` and `relevant()` helper methods for retrieval. | Should Have | ⬜ |
+| FR-03.1 | The Memory module shall expose a `read(query, history, kinds, top_k=8)` method returning keyword-overlap ranked MemoryItem hits using pure Python (no LLM). | Must Have | ✅ |
+| FR-03.2 | The Memory module shall expose a `record_outcome(tool_call, result_text, artifact_id, ...)` method that creates a kind=tool_outcome MemoryItem and persists it to state/memory.json without any LLM call. | Must Have | ✅ |
+| FR-03.3 | When classifying raw text via `remember()`, the Memory module shall make a single LLM call pinned to Gemini (provider="gemini") to determine kind, keywords, descriptor, value, and confidence. | Must Have | ✅ |
+| FR-03.4 | The Memory module shall persist all stored items to `state/memory.json` so that data survives process restarts; items shall be loaded lazily on first access and written after every update. | Must Have | ✅ |
+| FR-03.5 | The Memory module shall expose a `filter(kinds, goal_id, recent)` method for exact-match structured retrieval and a `relevant(query, kinds, top_k=5)` method for LLM-scored retrieval via gateway auto_route="memory". | Should Have | ✅ |
 
 ---
 
@@ -302,7 +302,7 @@ append to history, iterate
 |--------|-------------|-------------|-------------|---------------------|--------|
 | FR-01.1–5 | Project Setup | [#3](https://github.com/sujitojha1/AgentiAI/issues/3) | .env, .gitignore, pyproject.toml | Manual setup check | ⬜ |
 | FR-02.1–7 | Pydantic Schemas | [#4](https://github.com/sujitojha1/AgentiAI/issues/4) | schemas.py | Unit test schema instantiation | ✅ |
-| FR-03.1–5 | Memory Module | [#5](https://github.com/sujitojha1/AgentiAI/issues/5) | memory.py | Query C (durable memory) | ⬜ |
+| FR-03.1–5 | Memory Module | [#5](https://github.com/sujitojha1/AgentiAI/issues/5) | memory.py | Query C (durable memory) | ✅ |
 | FR-04.1–5 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ⬜ |
 | FR-05.1–4 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ⬜ |
 | FR-06.1–4 | Action Module | [#6](https://github.com/sujitojha1/AgentiAI/issues/6) | action.py | Query A, D (ArtifactStore path) | ⬜ |
