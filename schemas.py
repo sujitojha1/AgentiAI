@@ -9,7 +9,7 @@ class MemoryItem(BaseModel):
     keywords: list[str]
     descriptor: str            # one short human-readable line
     value: dict                # structured payload
-    artifact_id: str | None    # handle into the artifact store
+    artifact_id: int | None
     source: str
     run_id: str
     goal_id: str | None
@@ -18,7 +18,7 @@ class MemoryItem(BaseModel):
 
 
 class Artifact(BaseModel):
-    id: str                    # "art:<sha256-prefix>"
+    id: int
     content_type: str
     size_bytes: int
     source: str
@@ -29,7 +29,7 @@ class Goal(BaseModel):
     id: str
     text: str                  # short imperative description
     done: bool
-    attach_artifact_id: str | None
+    attach_artifact_id: int | None
 
 
 class Observation(BaseModel):
