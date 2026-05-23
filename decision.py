@@ -119,10 +119,19 @@ class Decision:
         mcp_tools: list,
     ) -> DecisionOutput:
         """One LLM call (auto_route=decision) → DecisionOutput(answer|tool_call)."""
+        # 16 KB keeps the request in LARGE tier (Gemini); HUGE tier is rejected
+        # by the gateway router. Wikipedia-style pages have bio facts up front.
+        _MAX_ATTACHED = 16_000
         if attached:
             art_id, blob = attached[0]
-            attached_text = blob.decode("utf-8", errors="replace")
-            attached_section = f"## Attached artifact (artifact:{art_id})\n{attached_text}"
+            text = blob[:_MAX_ATTACHED].decode("utf-8", errors="replace")
+            truncation_note = (
+                f" [first {_MAX_ATTACHED:,} of {len(blob):,} bytes shown]"
+                if len(blob) > _MAX_ATTACHED else ""
+            )
+            attached_section = (
+                f"## Attached artifact (artifact:{art_id}){truncation_note}\n{text}"
+            )
         else:
             attached_section = "## Attached artifact\n(none)"
         user_msg = (
