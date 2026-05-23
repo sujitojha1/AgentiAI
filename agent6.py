@@ -1,343 +1,213 @@
 """
-agent5.py — Session 5 (2026) shape, paired side-by-side with agent.py.
+agent6.py — Session 6 agentic loop.
 
-Same MCP server, same task (compute (a+b)+(c-d) for 4 numbers), but the
-loop is rebuilt on the upgrades V2 of the gateway exposes:
+Wires four cognitive roles into a single iterative loop:
+    Memory     (memory.py)     — persist and retrieve episodic facts
+    Perception (perception.py) — orchestrator: goal decomposition and tracking
+    Decision   (decision.py)   — single LLM call: answer or tool_call
+    Action     (action.py)     — pure MCP dispatch + ArtifactStore
 
-  agent.py (Session 4 style)            agent5.py (Session 5 style)
-  ─────────────────────────────────     ─────────────────────────────────
-  prompted JSON + regex parser     →    native tool-use, no parser
-  hand-rolled normalize_action()   →    canonical tool_calls[] from gateway
-  8-turn few-shot scaffold         →    short system prompt only
-  list[dict] message history       →    Pydantic AgentTrace
-  sequential tool dispatch         →    asyncio.TaskGroup parallel dispatch
-  no system-prompt caching         →    cache_system=True (one flag)
-  no reasoning knob                →    reasoning="off" on executor
-  no verifier                      →    typed Pydantic Verdict via
-                                        response_format=
-  llm_gateway (V1, port 8099)      →    llm_gatewayV2     (port 8100)
-
-The MCP server (mcp_server.py) is unchanged — that's the point. Session 5
-keeps the server, changes the loop.
+  agent5.py (Session 5)                agent6.py (Session 6)
+  ─────────────────────────────────    ────────────────────────────────────
+  single-role math agent           →   four-role cognitive architecture
+  flat message history             →   structured per-iter history dicts
+  LLM decides tool vs answer       →   Perception decomposes goals; Decision
+                                        picks answer vs tool per goal
+  no artifact handling             →   ArtifactStore for payloads > 4 KB
+  no durable memory                →   state/memory.json persists across runs
+  hardcoded task                   →   open-ended natural language query
+  gateway V2 (port 8100)           →   gateway V3 (port 8101, auto_route)
 """
 
 import asyncio
-import json
 import sys
 import time
+import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-
+import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-# V2 client lives one level up
-sys.path.insert(0, str(Path(__file__).resolve().parent / "llm_gatewayV3"))
-from client import LLM  # noqa: E402
+from action import store as artifacts
+from action import action
+from decision import decision
+from memory import memory
+from perception import perception
+from schemas import Goal
+
+GATEWAY_URL = "http://localhost:8101"
+MAX_ITERATIONS = 12
 
 
-# ────────────────────────────────────────────────────────────────────────────
-# Pydantic schemas — one source of truth for every boundary
-# ────────────────────────────────────────────────────────────────────────────
+# ── Gateway health check ──────────────────────────────────────────────────────
 
-class ToolDef(BaseModel):
-    """Canonical tool envelope — what V2 expects on the request."""
-    name: str
-    description: str = ""
-    input_schema: dict[str, Any] = Field(default_factory=dict)
-
-
-class TraceEvent(BaseModel):
-    """One row in the structured event log."""
-    kind: Literal["llm_call", "tool_call", "verdict"]
-    turn: int
-    provider: str | None = None
-    model: str | None = None
-    latency_ms: int | None = None
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    cache_read: int | None = None
-    cache_create: int | None = None
-    dialect: str | None = None
-    tool_name: str | None = None
-    tool_args: dict | None = None
-    tool_result: str | None = None
-    text: str | None = None
-    payload: dict | None = None
+def ensure_gateway() -> None:
+    try:
+        r = httpx.get(f"{GATEWAY_URL}/v1/capabilities", timeout=5)
+        r.raise_for_status()
+    except Exception as exc:
+        raise RuntimeError(
+            f"LLM Gateway V3 not reachable at {GATEWAY_URL}. "
+            f"Start it with: cd llm_gatewayV3 && uvicorn main:app --port 8101\n({exc})"
+        ) from exc
 
 
-class AgentTrace(BaseModel):
-    goal: str
-    events: list[TraceEvent] = Field(default_factory=list)
-    started_at: float = Field(default_factory=time.time)
+# ── MCP helpers ───────────────────────────────────────────────────────────────
 
-    def add(self, **kw) -> None:
-        self.events.append(TraceEvent(**kw))
-
-    def summary(self) -> dict:
-        llm_calls = [e for e in self.events if e.kind == "llm_call"]
-        tool_calls = [e for e in self.events if e.kind == "tool_call"]
-        return {
-            "llm_turns": len(llm_calls),
-            "tool_calls": len(tool_calls),
-            "total_in_tokens": sum(e.input_tokens or 0 for e in llm_calls),
-            "total_out_tokens": sum(e.output_tokens or 0 for e in llm_calls),
-            "cache_reads": sum(e.cache_read or 0 for e in llm_calls),
-            "wall_clock_s": round(time.time() - self.started_at, 2),
-        }
-
-
-class Verdict(BaseModel):
-    """Verifier's typed contract."""
-    passed: bool
-    reason: str
-    final_answer: float
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# MCP ↔ V2 bridge (one function)
-# ────────────────────────────────────────────────────────────────────────────
-
-def mcp_tool_to_v2(t) -> dict:
-    """The whole 'protocol bridge' between MCP and the gateway is this reshape."""
-    return ToolDef(
-        name=t.name,
-        description=t.description or "",
-        input_schema=t.inputSchema or {"type": "object", "properties": {}},
-    ).model_dump()
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# Parallel MCP dispatcher — when the model emits multiple independent
-# tool_calls in one turn, run them concurrently inside a TaskGroup.
-# ────────────────────────────────────────────────────────────────────────────
-
-async def dispatch_tool_calls(session, tool_calls: list[dict]) -> list[dict]:
-    async def run_one(tc: dict) -> dict:
-        result = await session.call_tool(tc["name"], tc.get("arguments") or {})
-        text = result.content[0].text if result.content else ""
-        # Echo provider_meta back unchanged on the assistant turn (Gemini
-        # requires its thoughtSignature; other providers ignore it).
-        return {
-            "role": "tool",
-            "tool_call_id": tc["id"],
-            "tool_name": tc["name"],
-            "content": text,
-        }
-
-    async with asyncio.TaskGroup() as tg:
-        tasks = [tg.create_task(run_one(tc)) for tc in tool_calls]
-    return [t.result() for t in tasks]
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# The agent loop — native tool-use, no parser
-# ────────────────────────────────────────────────────────────────────────────
-
-SYSTEM_PROMPT = (
-    "You are an arithmetic agent. Use the add and subtract tools for every "
-    "calculation — never compute mentally. When you have the final number, "
-    "reply in plain text with just the number."
-)
-
-
-async def run_native_loop(
-    session: ClientSession,
-    tools: list[dict],
-    user_task: str,
-    trace: AgentTrace,
-    provider: str | None = None,
-    max_turns: int = 6,
-) -> str:
-    llm = LLM()
-    messages: list[dict] = [{"role": "user", "content": user_task}]
-
-    for turn in range(1, max_turns + 1):
-        print(f"\n─── turn {turn}  →  LLM ───────────────────────────────────────────────")
-        reply = llm.chat(
-            messages=messages,
-            system=SYSTEM_PROMPT,
-            cache_system=True,           # mark the system prompt cacheable
-            tools=tools,                 # native tool-use
-            tool_choice="auto",
-            reasoning="off",             # executor stays cheap
-            provider=provider,           # None = capability-aware failover
-            temperature=0,
-            max_tokens=1024,
-        )
-
-        trace.add(
-            kind="llm_call",
-            turn=turn,
-            provider=reply["provider"],
-            model=reply["model"],
-            latency_ms=reply["latency_ms"],
-            input_tokens=reply["input_tokens"],
-            output_tokens=reply["output_tokens"],
-            cache_read=reply.get("cache_read_input_tokens"),
-            cache_create=reply.get("cache_creation_input_tokens"),
-            dialect=reply.get("tool_call_dialect"),
-            text=reply.get("text"),
-            payload={"tool_calls": reply.get("tool_calls", [])},
-        )
-        print(f"  provider : {reply['provider']}  model: {reply['model']}")
-        print(f"  latency  : {reply['latency_ms']} ms")
-        print(f"  tokens   : in={reply['input_tokens']}  out={reply['output_tokens']}  "
-              f"cache_read={reply.get('cache_read_input_tokens', 0)}  "
-              f"cache_create={reply.get('cache_creation_input_tokens', 0)}")
-        print(f"  dialect  : {reply.get('tool_call_dialect')}  "
-              f"reasoning_applied={reply.get('reasoning_applied')}")
-        print(f"  stop     : {reply.get('stop_reason')}")
-        print(f"  text     : {reply.get('text')!r}")
-
-        tool_calls = reply.get("tool_calls") or []
-        if not tool_calls:
-            return reply.get("text", "").strip()
-
-        # Echo the assistant turn (incl. tool_calls + provider_meta) back into history.
-        messages.append({
-            "role": "assistant",
-            "content": reply.get("text", "") or "",
-            "tool_calls": tool_calls,
-        })
-
-        print(f"\n─── turn {turn}  →  MCP   ({len(tool_calls)} calls"
-              + (", parallel via TaskGroup" if len(tool_calls) > 1 else "") + ") ───")
-        results = await dispatch_tool_calls(session, tool_calls)
-        for tc, r in zip(tool_calls, results):
-            print(f"  {tc['name']}({json.dumps(tc.get('arguments', {}))}) -> {r['content']}")
-            trace.add(
-                kind="tool_call",
-                turn=turn,
-                tool_name=tc["name"],
-                tool_args=tc.get("arguments"),
-                tool_result=r["content"],
-            )
-        messages.extend(results)
-
-    raise RuntimeError(f"agent exceeded max_turns={max_turns}")
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# Verifier — separate call, typed Pydantic output via response_format
-# ────────────────────────────────────────────────────────────────────────────
-
-def verify(trace: AgentTrace, expected: float, executor_answer: str) -> Verdict:
-    """Independent typed-output check — does the executor's answer match what
-    the actual MCP tool calls produced? No model arithmetic, just inspection
-    of the trace.
-
-    We use the gateway's structured-output feature so the model returns a
-    validated `Verdict`. Reasoning="medium" because verification is the
-    place to spend a little budget per Session 5.
-    """
-    last_tool_result = next(
-        (e.tool_result for e in reversed(trace.events) if e.kind == "tool_call"),
-        None,
-    )
-    schema = Verdict.model_json_schema()
-
-    llm = LLM()
-    reply = llm.chat(
-        prompt=(
-            f"You are a verifier. The expected answer is {expected}. "
-            f"The agent reported: {executor_answer!r}. "
-            f"The last tool call returned: {last_tool_result!r}. "
-            "Decide if the agent's reported answer matches the expected number "
-            "(numerically — '20' and '20.0' both match 20). Return a Verdict."
-        ),
-        system="Return a single Verdict object. Be terse.",
-        cache_system=True,
-        response_format={
-            "type": "json_schema",
-            "schema": schema,
-            "name": "Verdict",
-            "strict": True,
-        },
-        reasoning="medium",
-        temperature=0,
-        max_tokens=512,
-    )
-
-    if reply.get("parsed"):
-        return Verdict.model_validate(reply["parsed"])
-    # Fallback if structured output wasn't honoured by the chosen provider.
-    return Verdict(
-        passed=str(expected) in (executor_answer or ""),
-        reason="structured-output not honoured; fell back to substring check",
-        final_answer=float(expected),
-    )
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# Entrypoint
-# ────────────────────────────────────────────────────────────────────────────
-
-async def run(numbers: list[float], provider: str | None = "gr") -> None:
-    a, b, c, d = numbers
-    expected = (a + b) + (c - d)
-    user_task = (
-        f"Numbers: a={a}, b={b}, c={c}, d={d}. "
-        f"Compute (a + b) + (c - d). "
-        f"Note: (a+b) and (c-d) are independent — call both tools in parallel "
-        f"in your first turn if your API supports parallel tool calls."
-    )
-
-    print("═" * 78)
-    print(f"agent5.py — Session 5 native tool-use loop")
-    print(f"inputs   : a={a}  b={b}  c={c}  d={d}")
-    print(f"expected : ({a}+{b}) + ({c}-{d}) = {expected}")
-    print(f"provider : {provider or 'auto-failover'}")
-    print("═" * 78)
-
+@asynccontextmanager
+async def mcp_session():
     server_params = StdioServerParameters(
         command=sys.executable,
-        args=[str(Path(__file__).with_name("mcp_server.py"))],
+        args=[str(Path(__file__).resolve().parent / "mcp_server.py")],
     )
-
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            mcp_tools = (await session.list_tools()).tools
-            tools = [mcp_tool_to_v2(t) for t in mcp_tools]
-            print(f"[mcp] tools from server: {[t.name for t in mcp_tools]}")
+            yield session
 
-            trace = AgentTrace(goal=user_task)
 
-            # ── Act ────────────────────────────────────────────────────────
-            answer = await run_native_loop(session, tools, user_task, trace, provider=provider)
-            print(f"\n[executor] answer: {answer!r}")
+async def load_tools(session: ClientSession) -> list:
+    return (await session.list_tools()).tools
 
-            # ── Verify ─────────────────────────────────────────────────────
-            print("\n─── VERIFY (structured output) ─────────────────────────────────────")
-            verdict = verify(trace, expected, answer)
-            trace.add(kind="verdict", turn=0, payload=verdict.model_dump())
-            print(f"  passed       : {verdict.passed}")
-            print(f"  final_answer : {verdict.final_answer}")
-            print(f"  reason       : {verdict.reason}")
 
-            # ── Trace summary ─────────────────────────────────────────────
-            print("\n─── TRACE SUMMARY ──────────────────────────────────────────────────")
-            for k, v in trace.summary().items():
-                print(f"  {k:<22}: {v}")
-            print("\n─── EVENTS (Pydantic AgentTrace) ───────────────────────────────────")
-            for i, e in enumerate(trace.events):
-                line = e.model_dump(exclude_none=True)
-                # truncate noisy payloads
-                if "payload" in line and isinstance(line["payload"], dict):
-                    line["payload"] = {k: v for k, v in line["payload"].items() if v}
-                print(f"  #{i:02d} {line}")
+def mcp_tools_for_decision(mcp_tools: list) -> list[dict]:
+    """Convert MCP Tool objects to the gateway ToolDef dict format."""
+    return [
+        {
+            "name": t.name,
+            "description": getattr(t, "description", "") or "",
+            "input_schema": t.inputSchema if isinstance(t.inputSchema, dict) else {},
+        }
+        for t in mcp_tools
+    ]
 
-            print("\n" + "═" * 78)
-            print(f"FINAL: {verdict.final_answer}  (passed={verdict.passed})")
-            print("═" * 78)
 
+# ── History helper ────────────────────────────────────────────────────────────
+
+def final_answer_from(history: list[dict]) -> str:
+    """Return the last non-empty answer text from the history."""
+    for entry in reversed(history):
+        if entry.get("kind") == "answer":
+            text = (entry.get("text") or "").strip()
+            if text:
+                return text
+    return "(no answer produced)"
+
+
+# ── Main loop ─────────────────────────────────────────────────────────────────
+
+async def run(query: str) -> str:
+    ensure_gateway()
+
+    run_id = uuid.uuid4().hex[:8]
+    print("═" * 78)
+    print(f"agent6.py — Session 6  |  run_id={run_id}")
+    print(f"query: {query}")
+    print("═" * 78)
+
+    history: list[dict] = []
+    prior_goals: list[Goal] = []
+
+    # Persist the user query so facts/preferences survive into future runs
+    memory.remember(query, source="user_query", run_id=run_id)
+
+    t0 = time.time()
+
+    async with mcp_session() as session:
+        mcp_tools = await load_tools(session)
+        tools = mcp_tools_for_decision(mcp_tools)
+        print(f"[mcp] {len(mcp_tools)} tools: {[t.name for t in mcp_tools]}\n")
+
+        for it in range(1, MAX_ITERATIONS + 1):
+            print(f"{'─' * 60}")
+            print(f"[iter {it}]")
+
+            # ── Memory read ───────────────────────────────────────────────
+            hits = memory.read(query, history)
+            print(f"  [memory]     {len(hits)} hit(s)")
+
+            # ── Perception ────────────────────────────────────────────────
+            obs = perception.observe(query, hits, history, prior_goals, run_id)
+            prior_goals = obs.goals
+            done_count = sum(1 for g in obs.goals if g.done)
+            print(f"  [perception] {len(obs.goals)} goal(s), {done_count} done")
+            for g in obs.goals:
+                marker = "✓" if g.done else "○"
+                art = f"  [artifact:{g.attach_artifact_id}]" if g.attach_artifact_id else ""
+                print(f"    {marker} {g.id}: {g.text}{art}")
+
+            # ── Loop termination ──────────────────────────────────────────
+            if obs.all_done:
+                print("  [loop]       all goals done — terminating\n")
+                break
+
+            # ── Pick first unfinished goal ────────────────────────────────
+            goal = obs.next_unfinished()
+
+            # ── Resolve artifact attachment ───────────────────────────────
+            attached: list[tuple[int, bytes]] = []
+            if goal.attach_artifact_id and artifacts.exists(goal.attach_artifact_id):
+                blob = artifacts.get_bytes(goal.attach_artifact_id)
+                attached.append((goal.attach_artifact_id, blob))
+                print(f"  [artifact]   loaded artifact:{goal.attach_artifact_id} "
+                      f"({len(blob):,} bytes)")
+
+            # ── Decision ──────────────────────────────────────────────────
+            out = decision.next_step(goal, hits, attached, history, tools)
+
+            if out.is_answer:
+                print(f"  [decision]   answer: {out.answer[:120]!r}")
+                history.append({"iter": it, "kind": "answer",
+                                "goal_id": goal.id, "text": out.answer})
+                continue
+
+            # ── Action (MCP dispatch) ─────────────────────────────────────
+            tc = out.tool_call
+            print(f"  [decision]   tool_call: {tc.name}({tc.arguments})")
+
+            result_text, art_id = await action.execute(session, tc)
+            result_preview = result_text[:120] if art_id is None else f"→ artifact:{art_id}"
+            print(f"  [action]     {result_preview!r}")
+
+            # ── Memory record ─────────────────────────────────────────────
+            memory.record_outcome(
+                tool_call=tc,
+                result_text=result_text,
+                artifact_id=art_id,
+                run_id=run_id,
+                goal_id=goal.id,
+            )
+
+            # ── Append action outcome to history ──────────────────────────
+            history.append({"iter": it, "kind": "action",
+                            "goal_id": goal.id, "tool": tc.name,
+                            "arguments": tc.arguments,
+                            "result_descriptor": result_text[:300],
+                            "artifact_id": art_id})
+
+        else:
+            print(f"\n[loop] reached MAX_ITERATIONS={MAX_ITERATIONS} without completion")
+
+    elapsed = round(time.time() - t0, 2)
+    answer = final_answer_from(history)
+    print(f"\n{'═' * 78}")
+    print(f"FINAL ANSWER  ({elapsed}s, {it} iteration(s)):")
+    print(answer)
+    print("═" * 78)
+    return answer
+
+
+# ── Entrypoint ────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    numbers = [10, 20, 30, 40]   # (10+20) + (30-40) = 20
-    asyncio.run(run(numbers, provider="g"))   # groq llama-3.3-70b: native tools, parallel
+    import argparse
+    ap = argparse.ArgumentParser(description="AgentiAI Session 6 agent loop")
+    ap.add_argument("query", nargs="?",
+                    default="What is today's date and time in Tokyo?")
+    args = ap.parse_args()
+    asyncio.run(run(args.query))
 
 
 if __name__ == "__main__":

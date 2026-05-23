@@ -35,6 +35,13 @@ class Goal(BaseModel):
 class Observation(BaseModel):
     goals: list[Goal]
 
+    @property
+    def all_done(self) -> bool:
+        return bool(self.goals) and all(g.done for g in self.goals)
+
+    def next_unfinished(self) -> "Goal | None":
+        return next((g for g in self.goals if not g.done), None)
+
 
 class ToolCall(BaseModel):
     name: str
@@ -44,3 +51,7 @@ class ToolCall(BaseModel):
 class DecisionOutput(BaseModel):
     answer: str | None         # exactly one of these two is populated
     tool_call: ToolCall | None
+
+    @property
+    def is_answer(self) -> bool:
+        return self.answer is not None

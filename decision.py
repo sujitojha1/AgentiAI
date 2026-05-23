@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 from schemas import DecisionOutput, Goal, MemoryItem, ToolCall
 
@@ -92,12 +91,21 @@ class Decision:
         if not history:
             return "(empty)"
         lines = []
-        for msg in history:
-            role = msg.get("role", "?").upper()
-            content = str(msg.get("content", ""))
-            art = msg.get("artifact_id")
-            suffix = f" [artifact:{art}]" if art is not None else ""
-            lines.append(f"{role}: {content}{suffix}")
+        for entry in history:
+            kind = entry.get("kind", "?")
+            it = entry.get("iter", "?")
+            goal_id = entry.get("goal_id", "")
+            if kind == "answer":
+                text = (entry.get("text") or "")[:300]
+                lines.append(f"[iter {it}] ANSWER ({goal_id}): {text}")
+            elif kind == "action":
+                tool = entry.get("tool", "?")
+                desc = (entry.get("result_descriptor") or "")[:200]
+                art = entry.get("artifact_id")
+                suffix = f" [artifact:{art}]" if art is not None else ""
+                lines.append(f"[iter {it}] ACTION ({goal_id}): {tool} → {desc}{suffix}")
+            else:
+                lines.append(f"[iter {it}] {kind}: {str(entry)[:200]}")
         return "\n".join(lines)
 
     # ── public API ────────────────────────────────────────────────────────────
@@ -106,16 +114,17 @@ class Decision:
         self,
         goal: Goal,
         hits: list[MemoryItem],
-        attached: Optional[str],
+        attached: list[tuple[int, bytes]],
         history: list[dict],
         mcp_tools: list,
     ) -> DecisionOutput:
         """One LLM call (auto_route=decision) → DecisionOutput(answer|tool_call)."""
-        attached_section = (
-            f"## Attached artifact (artifact:{goal.attach_artifact_id})\n{attached}"
-            if attached is not None
-            else "## Attached artifact\n(none)"
-        )
+        if attached:
+            art_id, blob = attached[0]
+            attached_text = blob.decode("utf-8", errors="replace")
+            attached_section = f"## Attached artifact (artifact:{art_id})\n{attached_text}"
+        else:
+            attached_section = "## Attached artifact\n(none)"
         user_msg = (
             f"## Goal\nid: {goal.id}\ntext: {goal.text}\n\n"
             f"## Memory hits\n{self._fmt_hits(hits)}\n\n"

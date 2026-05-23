@@ -94,12 +94,21 @@ class Perception:
         if not history:
             return "(empty)"
         lines = []
-        for msg in history:
-            role = msg.get("role", "?").upper()
-            content = str(msg.get("content", ""))
-            art = msg.get("artifact_id")
-            suffix = f" [artifact:{art}]" if art is not None else ""
-            lines.append(f"{role}: {content}{suffix}")
+        for entry in history:
+            kind = entry.get("kind", "?")
+            it = entry.get("iter", "?")
+            goal_id = entry.get("goal_id", "")
+            if kind == "answer":
+                text = (entry.get("text") or "")[:300]
+                lines.append(f"[iter {it}] ANSWER ({goal_id}): {text}")
+            elif kind == "action":
+                tool = entry.get("tool", "?")
+                desc = (entry.get("result_descriptor") or "")[:200]
+                art = entry.get("artifact_id")
+                suffix = f" [artifact:{art}]" if art is not None else ""
+                lines.append(f"[iter {it}] ACTION ({goal_id}): {tool} → {desc}{suffix}")
+            else:
+                lines.append(f"[iter {it}] {kind}: {str(entry)[:200]}")
         return "\n".join(lines)
 
     def _fmt_goals(self, goals: list[Goal]) -> str:

@@ -172,15 +172,16 @@ append to history, iterate
 
 ### FR-07 Agent Loop
 
-**Reference**: [ISSUE-9] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-9] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-07.1 | agent6.py shall wire the four roles (Memory, Perception, Decision, Action) into a single iterative loop following the defined control flow. | Must Have | ⬜ |
-| FR-07.2 | The agent loop shall terminate when Perception reports all goals as done=True. | Must Have | ⬜ |
-| FR-07.3 | The agent loop shall maintain a running history list across iterations, appending each answer or tool outcome. | Must Have | ⬜ |
-| FR-07.4 | The agent loop shall call memory.record_outcome() after each Action execution. | Must Have | ⬜ |
-| FR-07.5 | The system shall use no third-party agentic frameworks (LangGraph, LangChain, CrewAI, etc.). | Must Have | ⬜ |
+| FR-07.1 | `agent6.py` wires Memory → Perception → Decision → Action in a single `async def run(query)` loop, exactly matching the sequence diagram (memory.read → perception.observe → decision.next_step → action.execute → memory.record_outcome → history append). | Must Have | ✅ |
+| FR-07.2 | The loop terminates when `all(g.done for g in obs.goals)` is true; falls back to `MAX_ITERATIONS=12` with a warning if goals are never all completed. | Must Have | ✅ |
+| FR-07.3 | History is a `list[dict]` with `role` in `{assistant, tool}`; answers appended as `role=assistant`, tool outcomes as `role=tool` with optional `artifact_id` field for downstream `[artifact:N]` resolution. | Must Have | ✅ |
+| FR-07.4 | `memory.record_outcome(tool_call, result_text, artifact_id, run_id, goal_id)` is called after every Action execution before the history append. | Must Have | ✅ |
+| FR-07.5 | `ensure_gateway()` checks `GET /v1/capabilities` at startup and raises `RuntimeError` with start instructions if unreachable. `run_id = uuid.uuid4().hex[:8]` and `memory.remember(query, source="user_query", run_id=run_id)` persist the query durably before the loop. | Must Have | ✅ |
+| FR-07.6 | The system uses no third-party agentic frameworks; the loop is pure Python with `asyncio` and typed `schemas.py` boundaries. | Must Have | ✅ |
 
 ---
 
@@ -309,7 +310,7 @@ append to history, iterate
 | FR-04.1–6 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ✅ |
 | FR-05.1–5 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ✅ |
 | FR-06.1–5 | Action Module | [#6](https://github.com/sujitojha1/AgentiAI/issues/6) | action.py | Query A, D (ArtifactStore path) | ✅ |
-| FR-07.1–5 | Agent Loop | [#9](https://github.com/sujitojha1/AgentiAI/issues/9) | agent6.py | All queries (end-to-end) | ⬜ |
+| FR-07.1–6 | Agent Loop | [#9](https://github.com/sujitojha1/AgentiAI/issues/9) | agent6.py | All queries (end-to-end) | ✅ |
 | FR-08.1–2 | MCP Server | — | mcp_server.py | Tool call dispatch tests | ⬜ |
 | FR-09.1–4 | LLM Gateway | — | llm_gatewayV3/ | Gateway health check | ⬜ |
 | FR-10-A.1–3 | Query A: Shannon | [#10](https://github.com/sujitojha1/AgentiAI/issues/10) | agent6.py | Terminal output — Query A | ⬜ |
