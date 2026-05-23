@@ -117,9 +117,9 @@ All four target queries pass. Tested against a clean `state/` directory with LLM
 | Query | Result | Iterations | Time |
 |-------|--------|-----------|------|
 | A — Shannon Wikipedia | **PASS ✓** | 4 | 227s |
-| B — Tokyo activities + weather | **PASS ✓** | 10 | 212s |
-| C — Mom's birthday (Run 1 + Run 2) | **PASS ✓** | 3 + 2 | 24s + 16s |
-| D — Asyncio research | **PASS ✓** | 6 | 161s |
+| B — Tokyo activities + weather | **PASS ✓** | 5 | 236s |
+| C — Mom's birthday (Run 1 + Run 2) | **PASS ✓** | 3 + 2 | 33s + 9s |
+| D — Asyncio research | **PASS ✓** | 7 | 405s |
 
 ---
 
@@ -226,97 +226,90 @@ VALIDATION
 **Tests:** Multi-goal decomposition, sequential tool calls (web_search + fetch_url + weather fetch), memory carryover across iterations.
 
 <details>
-<summary>Terminal output (10 iterations, 212s)</summary>
+<summary>Terminal output (5 iterations, 236s)</summary>
 
 ```
+[test] cleared /Users/payalchakraborty/Dev/EAG3/AgentiAI/state
+==============================================================================
+TEST QUERY B — Tokyo Activities + Weather (multi-goal + memory carryover)
+==============================================================================
 ══════════════════════════════════════════════════════════════════════════════
-agent6.py — Session 6  |  run_id=1ed0869d
+agent6.py — Session 6  |  run_id=8ae53d21
 query: Find 3 family-friendly things to do in Tokyo this weekend. Check Saturday's weather forecast there and tell me which one is most appropriate.
 ══════════════════════════════════════════════════════════════════════════════
+[05/23/26 13:35:08] INFO     Processing request of type ListToolsRequest                                      server.py:727
 [mcp] 9 tools: ['web_search', 'fetch_url', 'get_time', 'currency_convert', 'read_file', 'list_dir', 'create_file', 'update_file', 'edit_file']
 
 ────────────────────────────────────────────────────────────
 [iter 1]
   [memory]     1 hit(s)
   [perception] 3 goal(s), 0 done
-    ○ search-tokyo-activities: Find 3 family-friendly things to do in Tokyo this weekend.
-    ○ check-tokyo-weather: Check Saturday's weather forecast for Tokyo.
-    ○ recommend-activity: Determine the most appropriate activity based on the weather forecast.
-  [decision]   tool_call: web_search({'query': 'family-friendly activities in Tokyo this weekend'})
-  [action]     '{"title": "Best Family-Friendly Events in Tokyo (2026)"...}'
+    ○ search-tokyo-activities: Search for family-friendly activities in Tokyo.
+    ○ check-tokyo-weather: Check the weather forecast for Tokyo this Saturday.
+    ○ recommend-activity: Synthesize activity information and weather forecast to recommend the most appropriate family-friendly activity for Saturday.
+  [decision]   tool_call: web_search({'query': 'family-friendly activities in Tokyo', 'max_results': 5})
+[05/23/26 13:35:12] INFO     Processing request of type CallToolRequest                                       server.py:727
+  [action]     '{\n  "title": "TOKYO WITH KIDS! Best Things to Do and Family Fun! - YouTube",\n  "url": "https://www.youtube.com/watch?v=I'
 ────────────────────────────────────────────────────────────
 [iter 2]
   [memory]     2 hit(s)
-  [perception] 3 goal(s), 0 done
-  [decision]   tool_call: fetch_url({'url': 'https://tinytotintokyo.com/tokyo-family-events'})
-  [action]     '→ artifact:1'
+  [perception] 3 goal(s), 1 done
+    ✓ search-tokyo-activities: Search for family-friendly activities in Tokyo.
+    ○ check-tokyo-weather: Check the weather forecast for Tokyo this Saturday.
+    ○ recommend-activity: Synthesize activity information and weather forecast to recommend the most appropriate family-friendly activity for Saturday.
+  [decision]   tool_call: web_search({'query': 'weather forecast Tokyo this Saturday'})
+[05/23/26 13:38:19] INFO     Processing request of type CallToolRequest                                       server.py:727
+  [action]     '{\n  "title": "Tokyo, Tokyo, Japan Monthly Weather - AccuWeather",\n  "url": "https://www.accuweather.com/en/jp/tokyo/2263'
 ────────────────────────────────────────────────────────────
 [iter 3]
   [memory]     3 hit(s)
-  [perception] 3 goal(s), 0 done
-    ○ search-tokyo-activities  [artifact:1]
-  [artifact]   loaded artifact:1 (21,129 bytes)
-  [decision]   answer: 'Here are three family-friendly activities in Tokyo...'
+  [perception] 3 goal(s), 2 done
+    ✓ search-tokyo-activities: Search for family-friendly activities in Tokyo.
+    ✓ check-tokyo-weather: Check the weather forecast for Tokyo this Saturday.
+    ○ recommend-activity: Synthesize activity information and weather forecast to recommend the most appropriate family-friendly activity for Saturday.
+  [decision]   tool_call: fetch_url({'url': 'https://www.accuweather.com/en/jp/tokyo/226396/may-weather/226396', 'timeout': 20})
+[05/23/26 13:38:49] INFO     Processing request of type CallToolRequest                                       server.py:727
+[INIT].... → Crawl4AI 0.8.6 
+[FETCH]... ↓ https://www.accuweather.com/en/jp/tokyo/226396/may-weather/226396                                    | ✓ | ⏱: 
+2.09s 
+[SCRAPE].. ◆ https://www.accuweather.com/en/jp/tokyo/226396/may-weather/226396                                    | ✓ | ⏱: 
+0.03s 
+[COMPLETE] ● https://www.accuweather.com/en/jp/tokyo/226396/may-weather/226396                                    | ✓ | ⏱: 
+2.14s 
+  [action]     '→ artifact:1'
 ────────────────────────────────────────────────────────────
 [iter 4]
-  [memory]     3 hit(s)
-  [perception] 3 goal(s), 1 done
-    ✓ search-tokyo-activities  [artifact:1]
-    ○ check-tokyo-weather
-  [decision]   tool_call: web_search({'query': 'Tokyo weather forecast Saturday May 2 2026'})
-  [action]     '{"title": "Tokyo, Tokyo, Japan Monthly Weather - AccuWeather"...}'
+  [memory]     4 hit(s)
+  [perception] 3 goal(s), 2 done
+    ✓ search-tokyo-activities: Search for family-friendly activities in Tokyo.
+    ✓ check-tokyo-weather: Check the weather forecast for Tokyo this Saturday.
+    ○ recommend-activity: Synthesize activity information and weather forecast to recommend the most appropriate family-friendly activity for Saturday.  [artifact:1]
+  [artifact]   loaded artifact:1 (18,030 bytes)
+  [decision]   answer: 'Based on the weather forecast for Saturday, May 30, 2026, which is expected to be sunny and less humid with a high of 29'
 ────────────────────────────────────────────────────────────
 [iter 5]
   [memory]     4 hit(s)
-  [perception] 3 goal(s), 1 done
-  [decision]   tool_call: web_search({'query': 'Tokyo weather forecast Saturday'})
-  [action]     '{"title": "Tokyo Weather in May 2026..."...}'
-────────────────────────────────────────────────────────────
-[iter 6]
-  [memory]     5 hit(s)
-  [perception] 3 goal(s), 1 done
-  [decision]   tool_call: fetch_url({'url': 'https://www.data.jma.go.jp/multi/yoho/yoho_detail.html?code=130010&lang=en'})
-  [action]     '→ artifact:2'
-────────────────────────────────────────────────────────────
-[iter 7]
-  [memory]     6 hit(s)
-  [perception] 3 goal(s), 1 done
-    ○ check-tokyo-weather  [artifact:2]
-  [artifact]   loaded artifact:2 (4,402 bytes)
-  [decision]   answer: 'The forecast for Tokyo is cloudy with a maximum temperature of 18°C...'
-────────────────────────────────────────────────────────────
-[iter 8]
-  [memory]     6 hit(s)
-  [perception] 3 goal(s), 2 done
-    ✓ check-tokyo-weather  [artifact:2]
-    ○ recommend-activity  [artifact:2]
-  [decision]   tool_call: get_time({'timezone': 'Asia/Tokyo'})
-  [action]     '{"human": "Saturday, 23 May 2026 16:16:39 JST"...}'
-────────────────────────────────────────────────────────────
-[iter 9]
-  [memory]     7 hit(s)
-  [perception] 3 goal(s), 2 done
-    ○ recommend-activity  [artifact:1]
-  [artifact]   loaded artifact:1 (262,463 bytes)
-  [decision]   answer: 'Given that it is currently Saturday, May 23, 2026, and the weather forecast for Tokyo is cloudy with a maximum temperature of 18°C...'
-────────────────────────────────────────────────────────────
-[iter 10]
-  [memory]     7 hit(s)
   [perception] 3 goal(s), 3 done
+    ✓ search-tokyo-activities: Search for family-friendly activities in Tokyo.
+    ✓ check-tokyo-weather: Check the weather forecast for Tokyo this Saturday.
+    ✓ recommend-activity: Synthesize activity information and weather forecast to recommend the most appropriate family-friendly activity for Saturday.  [artifact:1]
   [loop]       all goals done — terminating
 
-══════════════════════════════════════════════════════════════════════════════
-FINAL ANSWER  (212.37s, 10 iteration(s)):
-Given that it is currently Saturday, May 23, 2026, and the weather forecast for Tokyo is cloudy with a maximum temperature of 18°C, an indoor, family-friendly activity is the most appropriate recommendation.
 
-I recommend visiting the **National Museum of Nature and Science** in Ueno Park. Alternatively, **teamLab Borderless** or **teamLab Planets** are world-class indoor digital art experiences perfect for a cool, cloudy day.
+══════════════════════════════════════════════════════════════════════════════
+FINAL ANSWER  (235.74s, 5 iteration(s)):
+Based on the weather forecast for Saturday, May 30, 2026, which is expected to be sunny and less humid with a high of 29°C, the most appropriate recommendation for a family-friendly activity in Tokyo is an outdoor excursion.
+
+Given the pleasant, sunny conditions, I recommend visiting **Ueno Park**. It is a fantastic, family-friendly destination that features the Ueno Zoo, several museums, and plenty of open space for children to play, making it ideal for the predicted clear and warm weather.
 ══════════════════════════════════════════════════════════════════════════════
 
+==============================================================================
 VALIDATION
-  answer mentions 'tokyo'         : ✓
-  answer references weather       : ✓  (cloud, indoor, forecast)
-  ≥2 activities identified        : ✓  (museum, park, teamlab, ueno)
-  answer recommends one activity  : ✓
+==============================================================================
+  answer mentions 'tokyo'           : ✓
+  answer references weather         : ✓  (sunny, clear, humid)
+  ≥2 activities identified          : ✓  (museum, park, ueno, zoo)
+  answer recommends one activity    : ✓
 
   RESULT: PASS ✓
 ```
@@ -333,46 +326,56 @@ VALIDATION
 **Tests:** Durable memory persistence in `state/memory.json` across separate process runs.
 
 <details>
-<summary>Terminal output — Run 1 (3 iterations, 24s)</summary>
+<summary>Terminal output — Run 1 (3 iterations, 33s)</summary>
 
 ```
 ══════════════════════════════════════════════════════════════════════════════
-agent6.py — Session 6  |  run_id=493209fe
+agent6.py — Session 6  |  run_id=153d6e83
 query: My mom's birthday is 15 May 2026. Remember that and give me a calendar reminder for two weeks before and on the day.
 ══════════════════════════════════════════════════════════════════════════════
+[05/23/26 13:39:37] INFO     Processing request of type ListToolsRequest                                      server.py:727
 [mcp] 9 tools: ['web_search', 'fetch_url', 'get_time', 'currency_convert', 'read_file', 'list_dir', 'create_file', 'update_file', 'edit_file']
 
 ────────────────────────────────────────────────────────────
 [iter 1]
   [memory]     1 hit(s)
-  [perception] 2 goal(s), 0 done
-    ○ set-reminder-two-weeks-before: Set a calendar reminder for 1 May 2026 for mother's birthday.
-    ○ set-reminder-on-birthday: Set a calendar reminder for 15 May 2026 for mother's birthday.
-  [decision]   tool_call: get_time({'timezone': 'UTC'})
-  [action]     '{"human": "Saturday, 23 May 2026 07:17:47 UTC"...}'
+  [perception] 3 goal(s), 0 done
+    ○ store-birthday-memory: Record that the user's mother's birthday is May 15, 2026.
+    ○ create-reminder-two-weeks-before: Create a calendar reminder for May 1, 2026, two weeks before the birthday.
+    ○ create-reminder-on-day: Create a calendar reminder for May 15, 2026, on the day of the birthday.
+  [decision]   answer: "The user's mother's birthday is May 15, 2026. I have recorded this information."
 ────────────────────────────────────────────────────────────
 [iter 2]
-  [memory]     2 hit(s)
-  [perception] 2 goal(s), 1 done
-    ✓ set-reminder-two-weeks-before
-    ○ set-reminder-on-birthday
-  [decision]   answer: 'To set a calendar reminder for 15 May 2026...'
+  [memory]     1 hit(s)
+  [perception] 3 goal(s), 1 done
+    ✓ store-birthday-memory: Record that the user's mother's birthday is May 15, 2026.
+    ○ create-reminder-two-weeks-before: Create a calendar reminder for May 1, 2026, two weeks before the birthday.
+    ○ create-reminder-on-day: Create a calendar reminder for May 15, 2026, on the day of the birthday.
+  [decision]   answer: 'I can see the user\'s mother\'s birthday is May 15, 2026. "Two weeks before the birthday" means May 1, 2026 (15 - 14 = 1).'
 ────────────────────────────────────────────────────────────
 [iter 3]
-  [memory]     2 hit(s)
-  [perception] 2 goal(s), 2 done
+  [memory]     1 hit(s)
+  [perception] 3 goal(s), 3 done
+    ✓ store-birthday-memory: Record that the user's mother's birthday is May 15, 2026.
+    ✓ create-reminder-two-weeks-before: Create a calendar reminder for May 1, 2026, two weeks before the birthday.
+    ✓ create-reminder-on-day: Create a calendar reminder for May 15, 2026, on the day of the birthday.
   [loop]       all goals done — terminating
 
+
 ══════════════════════════════════════════════════════════════════════════════
-FINAL ANSWER  (23.92s, 3 iteration(s)):
-To set a calendar reminder for 15 May 2026 for your mother's birthday, use a digital calendar and set a reminder for that date. For future years, ensure to set the reminder annually on 15 May.
+FINAL ANSWER  (32.77s, 3 iteration(s)):
+I can see the user's mother's birthday is May 15, 2026. "Two weeks before the birthday" means May 1, 2026 (15 - 14 = 1). Since I don't have a tool to create calendar reminders directly (no calendar API tool available), I'll note the reminder information so you can set it up.
+
+**Reminder to create:** A calendar reminder for **May 1, 2026** — two weeks before the user's mother's birthday on **May 15, 2026**. This gives you time to plan or purchase a gift/card. Since no calendar creation tool is available in my current toolset, please add this event manually to your calendar app (Google Calendar, Apple Calendar, etc.).
 ══════════════════════════════════════════════════════════════════════════════
 
+==============================================================================
 VALIDATION — Run 1
+==============================================================================
   answer references reminder/calendar : ✓
   answer references May / 2026        : ✓
   state/memory.json has birthday fact : ✓
-  total memory items                  : 2  (facts: 1)
+  total memory items                  : 1  (facts: 1)
 
   RUN 1 RESULT: PASS ✓
 ```
@@ -380,42 +383,48 @@ VALIDATION — Run 1
 </details>
 
 <details>
-<summary>Terminal output — Run 2 (2 iterations, 16s — retrieved from memory, no web call)</summary>
+<summary>Terminal output — Run 2 (2 iterations, 9s — retrieved from memory, no web call)</summary>
 
 ```
 ══════════════════════════════════════════════════════════════════════════════
-agent6.py — Session 6  |  run_id=436e6efc
+agent6.py — Session 6  |  run_id=2bec2416
 query: When is mom's birthday?
 ══════════════════════════════════════════════════════════════════════════════
+[05/23/26 13:40:13] INFO     Processing request of type ListToolsRequest                                      server.py:727
 [mcp] 9 tools: ['web_search', 'fetch_url', 'get_time', 'currency_convert', 'read_file', 'list_dir', 'create_file', 'update_file', 'edit_file']
 
 ────────────────────────────────────────────────────────────
 [iter 1]
-  [memory]     3 hit(s)
+  [memory]     2 hit(s)
   [perception] 1 goal(s), 0 done
-    ○ identify-moms-birthday: Retrieve the date of the user's mother's birthday from memory
-  [decision]   answer: "My mother's birthday is on May 15, 2026."
+    ○ retrieve-moms-birthday: Extract the date of mom's birthday from the provided memory facts.
+  [decision]   answer: "The date of mom's birthday is May 15, 2026."
 ────────────────────────────────────────────────────────────
 [iter 2]
-  [memory]     3 hit(s)
+  [memory]     2 hit(s)
   [perception] 1 goal(s), 1 done
   [loop]       all goals done — terminating
 
+
 ══════════════════════════════════════════════════════════════════════════════
-FINAL ANSWER  (16.24s, 2 iteration(s)):
-My mother's birthday is on May 15, 2026.
+FINAL ANSWER  (9.29s, 2 iteration(s)):
+The date of mom's birthday is May 15, 2026.
 ══════════════════════════════════════════════════════════════════════════════
 
+==============================================================================
 VALIDATION — Run 2
-  answer mentions 'birthday' : ✓
-  answer mentions 'may'      : ✓
-  answer mentions '2026'     : ✓
-  answer includes specific date : ✓  (15, may 15)
-  memory items after run 2   : 3
+==============================================================================
+  answer mentions 'birthday'          : ✓
+  answer mentions 'may'               : ✓
+  answer mentions '2026'              : ✓
+  answer includes specific date       : ✓  (15, may 1, may 15)
+  memory items after run 2            : 2
 
   RUN 2 RESULT: PASS ✓
 
+==============================================================================
   OVERALL RESULT: PASS ✓
+==============================================================================
 ```
 
 </details>
@@ -429,13 +438,18 @@ VALIDATION — Run 2
 **Tests:** Multi-artifact fetch (web_search → 3× fetch_url, each >4 KB), artifact auto-load for synthesis goal, numbered consensus list.
 
 <details>
-<summary>Terminal output (6 iterations, 161s)</summary>
+<summary>Terminal output (7 iterations, 405s)</summary>
 
 ```
+[test] cleared /Users/payalchakraborty/Dev/EAG3/AgentiAI/state
+==============================================================================
+TEST QUERY D — Asyncio Research (multi-source synthesis)
+==============================================================================
 ══════════════════════════════════════════════════════════════════════════════
-agent6.py — Session 6  |  run_id=947936f6
+agent6.py — Session 6  |  run_id=c45be1ab
 query: Search for 'Python asyncio best practices', read the top 3 results, and give me a short numbered list of the advice they agree on.
 ══════════════════════════════════════════════════════════════════════════════
+[05/23/26 13:40:58] INFO     Processing request of type ListToolsRequest                                      server.py:727
 [mcp] 9 tools: ['web_search', 'fetch_url', 'get_time', 'currency_convert', 'read_file', 'list_dir', 'create_file', 'update_file', 'edit_file']
 
 ────────────────────────────────────────────────────────────
@@ -443,80 +457,140 @@ query: Search for 'Python asyncio best practices', read the top 3 results, and g
   [memory]     1 hit(s)
   [perception] 3 goal(s), 0 done
     ○ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
-    ○ fetch-top-three-results: Fetch and read the top 3 URLs from the search results.
-    ○ summarize-consensus: Identify and list common advice from the three fetched results.
+    ○ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ○ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.
   [decision]   tool_call: web_search({'query': 'Python asyncio best practices', 'max_results': 5})
-  [action]     '{"title": "Asyncio Best Practices and Common Pitfalls"...}'
+[05/23/26 13:41:04] INFO     Processing request of type CallToolRequest                                       server.py:727
+  [action]     '{\n  "title": "Asyncio Best Practices and Common Pitfalls - Shane\'s Personal Blog",\n  "url": "https://www.shanechang.com/'
 ────────────────────────────────────────────────────────────
 [iter 2]
   [memory]     2 hit(s)
   [perception] 3 goal(s), 1 done
-    ✓ search-asyncio-best-practices
-    ○ fetch-top-three-results
-    ○ summarize-consensus
-  [decision]   tool_call: fetch_url({'url': 'https://shanechang.com/p/python-asyncio-best-practices-pitfalls'})
+    ✓ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
+    ○ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ○ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.
+  [decision]   tool_call: fetch_url({'url': 'https://www.shanechang.com/p/python-asyncio-best-practices-pitfalls', 'timeout': 20})
+[05/23/26 13:41:26] INFO     Processing request of type CallToolRequest                                       server.py:727
+[INIT].... → Crawl4AI 0.8.6 
+[FETCH]... ↓ https://www.shanechang.com/p/python-asyncio-best-practices-pitfalls                                  | ✓ | ⏱: 
+4.02s 
+[SCRAPE].. ◆ https://www.shanechang.com/p/python-asyncio-best-practices-pitfalls                                  | ✓ | ⏱: 
+0.02s 
+[COMPLETE] ● https://www.shanechang.com/p/python-asyncio-best-practices-pitfalls                                  | ✓ | ⏱: 
+4.05s 
   [action]     '→ artifact:1'
 ────────────────────────────────────────────────────────────
 [iter 3]
   [memory]     3 hit(s)
   [perception] 3 goal(s), 1 done
+    ✓ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
+    ○ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ○ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.
   [decision]   tool_call: fetch_url({'url': 'https://discuss.python.org/t/asyncio-best-practices/12576'})
+[05/23/26 13:41:50] INFO     Processing request of type CallToolRequest                                       server.py:727
+[INIT].... → Crawl4AI 0.8.6 
+[FETCH]... ↓ https://discuss.python.org/t/asyncio-best-practices/12576                                            | ✓ | ⏱: 
+3.15s 
+[SCRAPE].. ◆ https://discuss.python.org/t/asyncio-best-practices/12576                                            | ✓ | ⏱: 
+0.02s 
+[COMPLETE] ● https://discuss.python.org/t/asyncio-best-practices/12576                                            | ✓ | ⏱: 
+3.19s 
   [action]     '→ artifact:2'
 ────────────────────────────────────────────────────────────
 [iter 4]
   [memory]     4 hit(s)
   [perception] 3 goal(s), 1 done
-  [decision]   tool_call: fetch_url({'url': 'https://docs.python.org/3/library/asyncio-dev.html'})
+    ✓ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
+    ○ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ○ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.
+  [decision]   tool_call: fetch_url({'url': 'https://oneuptime.com/blog/post/2026-01-24-asyncio-concurrent-programming-python/view', 'timeout': 20})
+[05/23/26 13:43:29] INFO     Processing request of type CallToolRequest                                       server.py:727
+[INIT].... → Crawl4AI 0.8.6 
+[FETCH]... ↓ https://oneuptime.com/blog/post/2026-01-24-asyncio-concurrent-programming-python/view                | ✓ | ⏱: 
+2.59s 
+[SCRAPE].. ◆ https://oneuptime.com/blog/post/2026-01-24-asyncio-concurrent-programming-python/view                | ✓ | ⏱: 
+0.05s 
+[COMPLETE] ● https://oneuptime.com/blog/post/2026-01-24-asyncio-concurrent-programming-python/view                | ✓ | ⏱: 
+2.66s 
   [action]     '→ artifact:3'
 ────────────────────────────────────────────────────────────
 [iter 5]
   [memory]     5 hit(s)
   [perception] 3 goal(s), 2 done
-    ✓ fetch-top-three-results
-    ○ summarize-consensus  [artifact:1]
+    ✓ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
+    ✓ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ○ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.  [artifact:1]
   [artifact]   loaded artifact:1 (8,594 bytes)
-  [artifact]   auto-loaded artifact:3 (26,879 bytes) for synthesis
-  [artifact]   auto-loaded artifact:2 (6,558 bytes) for synthesis
-  [decision]   answer: 'Here are the common pieces of advice that appear across the three fetched results...'
+  [artifact]   auto-loaded artifact:3 (33,027 bytes) for synthesis
+  [artifact]   auto-loaded artifact:2 (6,679 bytes) for synthesis
+  [decision]   answer: "I have all three fetched artifacts. Let me extract the common advice across them.\n\n**Artifact 1** (Shane Chang's blog — "
 ────────────────────────────────────────────────────────────
 [iter 6]
   [memory]     5 hit(s)
+  [perception] 3 goal(s), 2 done
+    ✓ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
+    ✓ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ○ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.  [artifact:1]
+  [artifact]   loaded artifact:1 (8,594 bytes)
+  [artifact]   auto-loaded artifact:3 (33,027 bytes) for synthesis
+  [artifact]   auto-loaded artifact:2 (6,679 bytes) for synthesis
+  [decision]   answer: 'Here is the extracted and compiled numbered list of advice that is **common across all 3 fetched results**.\n\n---\n\n**Comm'
+────────────────────────────────────────────────────────────
+[iter 7]
+  [memory]     5 hit(s)
   [perception] 3 goal(s), 3 done
+    ✓ search-asyncio-best-practices: Perform a web search for 'Python asyncio best practices'.
+    ✓ fetch-top-3-results: Fetch the content of the top 3 search results for Python asyncio best practices.
+    ✓ synthesize-consensus-advice: Extract and compile a numbered list of advice that is common across the 3 fetched results.  [artifact:1]
   [loop]       all goals done — terminating
 
+
 ══════════════════════════════════════════════════════════════════════════════
-FINAL ANSWER  (160.98s, 6 iteration(s)):
-Here are the common pieces of advice that appear across the three fetched results:
+FINAL ANSWER  (405.46s, 7 iteration(s)):
+Here is the extracted and compiled numbered list of advice that is **common across all 3 fetched results**.
 
-### 1. Use `asyncio.run()` as the main entry point
-Always use `asyncio.run()` to start your asyncio programs — it properly sets up and tears down the event loop and handles cleanup on exceptions.
+---
 
-### 2. Always await coroutines / don't forget to await
-Forgetting to await is one of the most common mistakes. You must use `await` or schedule via `create_task()` for true concurrency.
+**Common Advice Across the 3 Fetched Results**
 
-### 3. Avoid long-running blocking code
-Blocking code halts the event loop. Use `loop.run_in_executor()` with a `ThreadPoolExecutor` to offload CPU-bound or blocking work.
+1. **Use `asyncio.run()` as the main entry point for async programs.**  
+   *Artifact 1* (Shane Chang's blog) explicitly states: "Always use `asyncio.run()` to start your asyncio programs" and shows the `if __name__ == "__main__": asyncio.run(main())` pattern.  
+   *Artifact 3* (OneUptime blog) demonstrates this pattern throughout its code examples, using `asyncio.run(main())` as the standard way to launch the event loop.  
+   *Artifact 2* (Python.org discussion) also uses `asyncio.run(main())` in its first code example, establishing it as the standard entry point.
 
-### 4. Use tasks / schedule coroutines for concurrency
-Use `asyncio.create_task()` to schedule coroutines concurrently rather than awaiting them sequentially.
+2. **Always await coroutines (do not forget to await).**  
+   *Artifact 1* devotes a full section to this: "Always Await Coroutines," warning that a coroutine created but not awaited is never executed. It contrasts `fetch_data(url)` (bad) with `await fetch_data(url)` (good).  
+   *Artifact 2* (Python.org discussion) makes the same point: "Async functions are not necessarily asynchronous" — simply calling them without proper awaiting yields synchronous, sequential execution.  
+   *Artifact 3* reinforces this by consistently showing `await` on every coroutine call in its examples (e.g., `await asyncio.sleep(1)`, `await session.get(url)`).
 
-### 5. Debug mode and logging
-Enable debug mode (`PYTHONASYNCIODEBUG`, `debug=True` in `asyncio.run()`) to catch un-awaited coroutines, tasks that are never retrieved, or callbacks that block the loop.
+3. **Use async context managers (`async with`) for proper resource management.**  
+   *Artifact 1* lists "Prefer Async Context Managers" as a best practice, showing `async with aiohttp.ClientSession() as session` for proper cleanup.  
+   *Artifact 3* includes a dedicated section "Async Context Managers and Iterators," demonstrating `async with aiofiles.open(...)` and `async with aiohttp.ClientSession() as session`.  
+   *Artifact 2* does not explicitly cover async context managers, but this advice is strongly echoed in the other two sources.
 
-### 6. Handle cancellation and clean up resources
-Catch `CancelledError`, clean up resources, and re-raise. Close async generators explicitly and don't leave resources dangling.
+4. **Handle cancellation and errors gracefully.**  
+   *Artifact 1* has a section "Handle Cancellation Gracefully," showing how to catch `asyncio.CancelledError`, clean up resources, and re-raise.  
+   *Artifact 3* includes a dedicated "Error Handling in Async Code" section, demonstrating `try/except` blocks around async operations and handling `asyncio.TimeoutError`.  
+   *Artifact 2* (the discussion thread) focuses more on patterns and pitfalls but touches on this theme by noting that long-running loops block the event loop — implying the need for proper cancellation and yielding control.
+
+5. **Avoid blocking the event loop with long-running synchronous code.**  
+   *Artifact 2* explicitly warns: "Do not create functions with long running loops" because they "cause the event loop to halt until the function finishes, which causes lag." It recommends scheduling iterations onto the event loop instead.  
+   *Artifact 3* has a section "Running Blocking Code in Async Context" that advises using `loop.run_in_executor()` to offload blocking code (e.g., `time.sleep()`, CPU-heavy work) to a thread pool so the event loop stays responsive.  
+   *Artifact 1* implicitly supports this by advocating proper async patterns throughout, avoiding synchronous blocks.
 ══════════════════════════════════════════════════════════════════════════════
 
 VALIDATION
   answer contains 'asyncio'              : ✓
-  answer contains 'async'               : ✓
-  numbered list ≥3 items                : ✓  (6 item(s) found)
-  advice group 1 (asyncio.run)          : ✓
-  advice group 2 (concurrency)          : ✓
-  advice group 3 (blocking)             : ✓
-  artifacts ≥4KB stored (need ≥3)       : ✓  (3 artifact(s), sizes: [26, 8, 6] KB)
-  web_search recorded in memory         : ✓
-  fetch_url ×3 each with artifact_id    : ✓  (3 fetch_url call(s); 3 with artifact_id)
+  answer contains 'async'              : ✓
+  numbered list ≥3 items              : ✓  (5 item(s) found)
+  advice group 1 matched              : ✓  ('asyncio.run')
+  advice group 2 matched              : ✗  (signals: ['gather', 'taskgroup']...)
+  advice group 3 matched              : ✓  ('blocking')
+  advice group 4 matched              : ✓  ('timeout')
+  advice group 5 matched              : ✗  (signals: ['semaphore', 'rate limit']...)
+  artifacts ≥4KB stored (need ≥3)     : ✓  (3 artifact(s), sizes: [32, 8, 6] KB)
+  web_search recorded in memory       : ✓
+  fetch_url ×3 each with artifact_id  : ✓  (3 fetch_url call(s); 3 with artifact_id)
 
   RESULT: PASS ✓
 ```
