@@ -116,7 +116,7 @@ All four target queries pass. Tested against a clean `state/` directory with LLM
 
 | Query | Result | Iterations | Time |
 |-------|--------|-----------|------|
-| A — Shannon Wikipedia | **PASS ✓** | 4 | 249s |
+| A — Shannon Wikipedia | **PASS ✓** | 4 | 227s |
 | B — Tokyo activities + weather | **PASS ✓** | 10 | 212s |
 | C — Mom's birthday (Run 1 + Run 2) | **PASS ✓** | 3 + 2 | 24s + 16s |
 | D — Asyncio research | **PASS ✓** | 6 | 161s |
@@ -130,67 +130,87 @@ All four target queries pass. Tested against a clean `state/` directory with LLM
 **Tests:** Artifact attach path — 262 KB Wikipedia page → ArtifactStore → Perception attaches to extraction goal.
 
 <details>
-<summary>Terminal output (4 iterations, 249s)</summary>
+<summary>Terminal output (4 iterations, 227s)</summary>
 
 ```
+[test] cleared /Users/payalchakraborty/Dev/EAG3/AgentiAI/state
+==============================================================================
+TEST QUERY A — Claude Shannon Wikipedia (artifact attach path)
+==============================================================================
 ══════════════════════════════════════════════════════════════════════════════
-agent6.py — Session 6  |  run_id=f0257b9f
+agent6.py — Session 6  |  run_id=61786e87
 query: Fetch https://en.wikipedia.org/wiki/Claude_Shannon and tell me his birth date, death date, and three key contributions to information theory.
 ══════════════════════════════════════════════════════════════════════════════
+[05/23/26 13:30:08] INFO     Processing request of type ListToolsRequest                                      server.py:727
 [mcp] 9 tools: ['web_search', 'fetch_url', 'get_time', 'currency_convert', 'read_file', 'list_dir', 'create_file', 'update_file', 'edit_file']
 
 ────────────────────────────────────────────────────────────
 [iter 1]
   [memory]     1 hit(s)
   [perception] 3 goal(s), 0 done
-    ○ fetch-shannon-page: Fetch the Wikipedia page for Claude Shannon
-    ○ extract-biographical-info: Extract the birth date and death date of Claude Shannon
-    ○ identify-key-contributions: Identify three key contributions to information theory
+    ○ fetch-shannon-page: Fetch the Wikipedia page for Claude Shannon.
+    ○ extract-biographical-info: Extract birth date and death date from the Wikipedia page.
+    ○ summarize-contributions: Identify three key contributions to information theory based on the content.
   [decision]   tool_call: fetch_url({'url': 'https://en.wikipedia.org/wiki/Claude_Shannon'})
+[05/23/26 13:30:17] INFO     Processing request of type CallToolRequest                                       server.py:727
+[INIT].... → Crawl4AI 0.8.6 
+[FETCH]... ↓ https://en.wikipedia.org/wiki/Claude_Shannon                                                         | ✓ | ⏱: 
+2.25s 
+[SCRAPE].. ◆ https://en.wikipedia.org/wiki/Claude_Shannon                                                         | ✓ | ⏱: 
+0.26s 
+[COMPLETE] ● https://en.wikipedia.org/wiki/Claude_Shannon                                                         | ✓ | ⏱: 
+2.54s 
   [action]     '→ artifact:1'
 ────────────────────────────────────────────────────────────
 [iter 2]
   [memory]     2 hit(s)
   [perception] 3 goal(s), 1 done
-    ✓ fetch-shannon-page
-    ○ extract-biographical-info  [artifact:1]
-    ○ identify-key-contributions  [artifact:1]
-  [artifact]   loaded artifact:1 (262,158 bytes)
+    ✓ fetch-shannon-page: Fetch the Wikipedia page for Claude Shannon.
+    ○ extract-biographical-info: Extract birth date and death date from the Wikipedia page.  [artifact:1]
+    ○ summarize-contributions: Identify three key contributions to information theory based on the content.  [artifact:1]
+  [artifact]   loaded artifact:1 (262,600 bytes)
   [decision]   answer: 'Claude Shannon was born on April 30, 1916, and died on February 24, 2001.'
 ────────────────────────────────────────────────────────────
 [iter 3]
   [memory]     2 hit(s)
   [perception] 3 goal(s), 2 done
-    ✓ fetch-shannon-page
-    ✓ extract-biographical-info  [artifact:1]
-    ○ identify-key-contributions  [artifact:1]
-  [artifact]   loaded artifact:1 (262,158 bytes)
-  [decision]   answer: 'Based on the fetched Wikipedia article on Claude Shannon, here are three key contributions...'
+    ✓ fetch-shannon-page: Fetch the Wikipedia page for Claude Shannon.
+    ✓ extract-biographical-info: Extract birth date and death date from the Wikipedia page.  [artifact:1]
+    ○ summarize-contributions: Identify three key contributions to information theory based on the content.  [artifact:1]
+  [artifact]   loaded artifact:1 (262,600 bytes)
+  [decision]   answer: 'Based on the content provided, three key contributions by Claude Shannon to the field of information theory and related '
 ────────────────────────────────────────────────────────────
 [iter 4]
   [memory]     2 hit(s)
   [perception] 3 goal(s), 3 done
+    ✓ fetch-shannon-page: Fetch the Wikipedia page for Claude Shannon.
+    ✓ extract-biographical-info: Extract birth date and death date from the Wikipedia page.  [artifact:1]
+    ✓ summarize-contributions: Identify three key contributions to information theory based on the content.  [artifact:1]
   [loop]       all goals done — terminating
 
+
 ══════════════════════════════════════════════════════════════════════════════
-FINAL ANSWER  (248.94s, 4 iteration(s)):
-Based on the fetched Wikipedia article on Claude Shannon, here are three key contributions he made to information theory:
+FINAL ANSWER  (226.51s, 4 iteration(s)):
+Based on the content provided, three key contributions by Claude Shannon to the field of information theory and related disciplines include:
 
-1. **Founding of Information Theory (1948)** — Shannon published "A Mathematical Theory of Communication" in 1948, which laid the entire foundation for the field. He introduced the concept of **entropy** as a measure of information content, defined the **bit** as the fundamental unit of information, and established mathematical frameworks for quantifying information transmission.
-
-2. **Noisy-Channel Coding Theorem (Shannon's Theorem)** — He proved that it is possible to transmit information over a noisy communication channel with an arbitrarily low error rate, provided the transmission rate does not exceed the **channel capacity**. This theorem provides the theoretical upper bound for reliable data transmission.
-
-3. **Source Coding Theorem (Data Compression)** — Shannon established the theoretical limits of data compression, showing that the minimum average number of bits needed to represent a source without loss is given by its entropy. This underpins all modern lossless compression algorithms (ZIP, PNG, Huffman coding).
+1.  **The Mathematical Theory of Communication**: Often considered his seminal work, this foundational text established the core principles of information theory.
+2.  **A Symbolic Analysis of Relay and Switching Circuits (1937)**: His master's thesis demonstrated that electrical applications of **Boolean algebra** could construct any logical numerical relationship, which provided the theoretical foundation for **digital circuits** and **digital computing**.
+3.  **Entropy in information theory**: Shannon introduced the concept of **entropy** as a measure of information, which became a cornerstone for defining **units of information** and remains essential to modern fields like **data compression**.
 ══════════════════════════════════════════════════════════════════════════════
 
+==============================================================================
 VALIDATION
+==============================================================================
   birth  (April 30 1916) found : ✓  (memory)
   death  (Feb 24 2001)  found : ✓  (memory)
-  contribution 1 identified   : ✓  ('mathematical theory')
-  contribution 2 identified   : ✓  ('source coding')
-  contribution 3 identified   : ✓  ('noisy-channel')
-  artifact ≥4KB stored        : ✓  (1 artifact(s) ≥4KB, largest 262,158B)
-  memory records tool outcome : ✓  (tools: ['fetch_url'])
+  contribution group 1                  : ✓  ('mathematical theory')
+  contribution group 2                  : ✓  ('boolean')
+  contribution group 3                  : ✓  ('data compression')
+  contribution group 4                  : ✗  (signals: ['noisy channel', 'noisy-channel', 'channel capacity']...)
+  contribution group 5                  : ✗  (signals: ['cryptograph', 'cryptanalysis', 'secrecy']...)
+  ≥3 of 5 groups matched       : ✓  (3 matched)
+  artifact ≥4KB stored                 : ✓  (1 artifact(s) ≥4KB, largest 262,600B)
+  memory records tool outcome          : ✓  (tools: ['fetch_url'])
 
   RESULT: PASS ✓
 ```
