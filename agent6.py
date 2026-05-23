@@ -220,7 +220,18 @@ async def run(query: str) -> str:
             tc = out.tool_call
             print(f"  [decision]   tool_call: {tc.name}({tc.arguments})")
 
-            result_text, art_id = await action.execute(session, tc)
+            try:
+                result_text, art_id = await action.execute(session, tc)
+            except RuntimeError as err:
+                err_msg = str(err)
+                print(f"  [action]     ERROR: {err_msg[:120]}")
+                history.append({"iter": it, "kind": "action",
+                                "goal_id": goal.id, "tool": tc.name,
+                                "arguments": tc.arguments,
+                                "result_descriptor": f"ERROR: {err_msg[:300]}",
+                                "artifact_id": None})
+                continue
+
             result_preview = result_text[:120] if art_id is None else f"→ artifact:{art_id}"
             print(f"  [action]     {result_preview!r}")
 

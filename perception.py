@@ -36,6 +36,8 @@ Do EXACTLY ONE of the following — never both in the same response:
       fetch_url appears N times in history (count ACTION entries with tool=fetch_url).
       A web_search result does NOT count. With N=3, the goal is done only after
       3 separate fetch_url calls are visible in history.
+      IMPORTANT: History entries showing "ERROR: Tool '...' error:..." mark failed
+      tool calls. A failed call does NOT satisfy any goal — do not count it as evidence.
 
   (B) Set attach_artifact_id on the first unfinished goal
       If the first unfinished goal needs content from a prior tool result, set its
@@ -46,11 +48,12 @@ Do EXACTLY ONE of the following — never both in the same response:
       fetch_url on new URLs — that goal takes a URL string as input, not blob bytes.
 
 ━━━ STEP-BY-STEP REASONING (work through this before writing JSON) ━━━
-1. Is this the first call (no prior goals) or a subsequent call?
-2. For each existing goal, find the history entry — if any — that satisfies it.
-3. Does the first unfinished goal need artifact bytes to proceed?
+1. [classify: call-type] Is this the first call (prior goals empty) or a subsequent call?
+2. [lookup: evidence-scan] For each existing goal, scan history oldest→newest for the
+   entry — if any — that clearly and fully satisfies it. Skip ERROR entries entirely.
+3. [classify: action-type] Does the first unfinished goal need artifact bytes to proceed?
    Yes → action B.  No → action A.
-4. Self-check: am I marking any goal done without explicit history evidence?
+4. [verify: conservative-check] Am I marking any goal done without explicit history evidence?
    If yes, keep it false. When in doubt, keep done=false.
 
 ━━━ OUTPUT ━━━

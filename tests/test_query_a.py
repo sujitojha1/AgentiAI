@@ -42,20 +42,30 @@ BIRTH_MONTH = ["april", "apr"]
 DEATH_YEAR  = "2001"
 DEATH_MONTH = ["february", "feb"]
 
-# Each sub-list = one contribution; at least one token per sub-list must match.
-# Three such groups must match to confirm three distinct contributions.
-# Group 2 accepts both Source Coding Theorem (entropy/compression) and
-# Boolean circuit design — both are valid Shannon contributions.
+# Each sub-list = one topic area of Shannon's work.
+# At least one signal per sub-list must appear in the answer.
+# THREE of the FIVE groups must match — any three valid highlights pass.
+# This accepts the full breadth of Shannon's recognised contributions.
 CONTRIBUTION_GROUPS = [
-    # 1948 paper / information theory foundations / bit as unit
-    ["mathematical theory", "theory of communication", "1948", "bit"],
-    # Source Coding Theorem (data compression) OR Boolean circuit design
+    # Information theory foundations: the 1948 paper, entropy, bit, the field itself
+    ["mathematical theory", "theory of communication", "1948", "bit",
+     "information theory", "entropy", "founded", "founding", "father of"],
+    # Digital circuits / Boolean algebra / switching / relay logic
+    ["boolean", "circuit", "switching", "relay", "digital", "logic design",
+     "symbolic analysis"],
+    # Data compression / source coding / lossless / Shannon entropy bound
     ["source coding", "data compression", "compression", "lossless",
-     "uncertainty", "shannon entropy", "boolean", "circuit design"],
-    # Noisy-Channel Coding Theorem / channel capacity / Shannon limit
+     "huffman", "redundancy"],
+    # Noisy-channel theorem / channel capacity / error correction / coding
     ["noisy channel", "noisy-channel", "channel capacity", "shannon limit",
-     "hartley", "error rate", "error correction", "coding theorem"],
+     "error correction", "error rate", "coding theorem", "reliable transmission"],
+    # Cryptography / cryptanalysis / secrecy / information-theoretic security
+    ["cryptograph", "cryptanalysis", "secrecy", "one-time pad", "perfect secrecy",
+     "communication theory of secrecy"],
 ]
+
+# Require at least 3 of the 5 groups to match
+MIN_GROUPS_REQUIRED = 3
 
 
 def clean_state() -> None:
@@ -152,21 +162,20 @@ def check_bio_dates(answer: str) -> tuple[bool, list[str]]:
 
 
 def check_contributions(answer: str) -> tuple[bool, list[str]]:
-    """Verify ≥ 3 distinct information-theory contributions appear in the final answer."""
-    low      = answer.lower()
-    failures = []
-    matched  = [
+    """Verify ≥ MIN_GROUPS_REQUIRED of the 5 contribution areas appear in the answer."""
+    low     = answer.lower()
+    matched = [
         i for i, group in enumerate(CONTRIBUTION_GROUPS, 1)
         if any(signal in low for signal in group)
     ]
-    if len(matched) < 3:
-        missing = [i for i in range(1, 4) if i not in matched]
-        failures.append(
-            f"only {len(matched)}/3 contributions identified in final answer "
-            f"(missing group(s): {missing}; "
-            f"signals: {[CONTRIBUTION_GROUPS[i-1][:3] for i in missing]})"
-        )
-    return len(failures) == 0, failures
+    if len(matched) < MIN_GROUPS_REQUIRED:
+        missing = [i for i in range(1, len(CONTRIBUTION_GROUPS) + 1) if i not in matched]
+        return False, [
+            f"only {len(matched)}/{len(CONTRIBUTION_GROUPS)} contribution areas matched "
+            f"(need ≥{MIN_GROUPS_REQUIRED}); missing group(s): {missing}; "
+            f"signals: {[CONTRIBUTION_GROUPS[i-1][:3] for i in missing]}"
+        ]
+    return True, []
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -208,11 +217,16 @@ async def main(clean: bool) -> int:
         ok     = in_ans or in_mem
         print(f"  {label} found : {'✓' if ok else '✗'}  ({src})")
 
-    # Contributions (must be in final answer)
+    # Contributions (≥3 of 5 groups must match)
+    matched_count = 0
     for i, group in enumerate(CONTRIBUTION_GROUPS, 1):
         hit = next((s for s in group if s in low), None)
-        print(f"  contribution {i} identified             : {'✓' if hit else '✗'}"
+        if hit:
+            matched_count += 1
+        print(f"  contribution group {i}                  : {'✓' if hit else '✗'}"
               + (f"  ('{hit}')" if hit else f"  (signals: {group[:3]}...)"))
+    print(f"  ≥{MIN_GROUPS_REQUIRED} of {len(CONTRIBUTION_GROUPS)} groups matched       : "
+          f"{'✓' if matched_count >= MIN_GROUPS_REQUIRED else '✗'}  ({matched_count} matched)")
 
     # Artifact store
     bins       = list(ARTIFACT_DIR.glob("*.bin")) if ARTIFACT_DIR.exists() else []

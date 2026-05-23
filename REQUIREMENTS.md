@@ -224,14 +224,14 @@ append to history, iterate
 
 #### FR-10-B: Tokyo Activities with Weather (Multi-Goal + Memory Carryover)
 
-**Reference**: [ISSUE-11] · **Status**: 🔄 In Progress — test written, pass not yet confirmed
+**Reference**: [ISSUE-11] · **Status**: ✅ Met — PASS ✓ in 10 iterations (212s)
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-10-B.1 | When given Query B, the system shall decompose the query into at least two goals: finding activities and checking weather. | Must Have | 🔄 |
-| FR-10-B.2 | The system shall retrieve Saturday's Tokyo weather forecast using a tool call. | Must Have | 🔄 |
-| FR-10-B.3 | The system shall carry memory across iterations to correlate the weather forecast with the activity recommendations. | Must Have | 🔄 |
-| FR-10-B.4 | The final answer for Query B shall recommend the most weather-appropriate of the three activities. | Must Have | 🔄 |
+| FR-10-B.1 | When given Query B, the system shall decompose the query into at least two goals: finding activities and checking weather. | Must Have | ✅ |
+| FR-10-B.2 | The system shall retrieve Saturday's Tokyo weather forecast using a tool call. | Must Have | ✅ |
+| FR-10-B.3 | The system shall carry memory across iterations to correlate the weather forecast with the activity recommendations. | Must Have | ✅ |
+| FR-10-B.4 | The final answer for Query B shall recommend the most weather-appropriate of the three activities. | Must Have | ✅ |
 
 #### FR-10-C: Mom's Birthday (Durable Memory Across Two Runs)
 
@@ -245,28 +245,28 @@ append to history, iterate
 
 #### FR-10-D: Asyncio Research (Multi-Source Synthesis)
 
-**Reference**: [ISSUE-13] · **Status**: 🔄 In Progress — test written; fetch_url×3 + synthesis fixes applied, re-run pending
+**Reference**: [ISSUE-13] · **Status**: ✅ Met — PASS ✓ in 6 iterations (161s)
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-10-D.1 | When given Query D, the system shall call `web_search` then `fetch_url` exactly 3 times (one per URL), each result stored as an artifact > 4 KB. | Must Have | 🔄 |
-| FR-10-D.2 | The system shall pass all 3 fetched artifacts to Decision for synthesis; Perception shall track the read goal as done only after 3 `fetch_url` calls appear in history. | Must Have | 🔄 |
-| FR-10-D.3 | The final answer for Query D shall provide a numbered list of ≥3 asyncio best-practice items drawn from multiple sources (asyncio.run, gather/TaskGroup, blocking avoidance, timeouts, semaphores). | Must Have | 🔄 |
+| FR-10-D.1 | When given Query D, the system shall call `web_search` then `fetch_url` exactly 3 times (one per URL), each result stored as an artifact > 4 KB. | Must Have | ✅ |
+| FR-10-D.2 | The system shall pass all 3 fetched artifacts to Decision for synthesis; Perception shall track the read goal as done only after 3 `fetch_url` calls appear in history. | Must Have | ✅ |
+| FR-10-D.3 | The final answer for Query D shall provide a numbered list of ≥3 asyncio best-practice items drawn from multiple sources (asyncio.run, gather/TaskGroup, blocking avoidance, timeouts, semaphores). | Must Have | ✅ |
 
 ---
 
 ### FR-11 Deliverables
 
-**Reference**: [ISSUE-14] · **Status**: 🔄 In Progress
+**Reference**: [ISSUE-14] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
 | FR-11.1 | The repository shall contain four code modules with clear separation of concerns: memory.py, perception.py, decision.py, action.py, plus agent6.py and schemas.py. | Must Have | ✅ |
-| FR-11.2 | All four target queries (A–D) shall produce correct final answers; terminal output shall be captured from a clean state/ directory. | Must Have | 🔄 |
+| FR-11.2 | All four target queries (A–D) shall produce correct final answers; terminal output shall be captured from a clean state/ directory. | Must Have | ✅ |
 | FR-11.3 | Memory persistence across runs shall be verified for Query C (state/memory.json durable-memory behaviour). | Must Have | ✅ |
 | FR-11.4 | All four cognitive layers shall be backed by typed Pydantic v2 contracts. | Must Have | ✅ |
 | FR-11.5 | The state/ directory shall be excluded by .gitignore and be cleanable between attempts. | Must Have | ✅ |
-| FR-11.6 | The README shall include actual terminal output for all four queries. | Must Have | ⬜ |
+| FR-11.6 | The README shall include actual terminal output for all four queries. | Must Have | ✅ |
 | FR-11.7 | A YouTube demo link shall be included, showing all four queries end-to-end. | Must Have | ⬜ |
 | FR-11.8 | Perception and Decision prompts and a Validation JSON (Proof of Prompt) shall be extracted and included in the repository. | Must Have | ✅ |
 
@@ -276,13 +276,13 @@ append to history, iterate
 
 | ID | Category | Requirement | Priority | Status |
 |----|----------|-------------|----------|--------|
-| NFR-01 | Correctness | The system shall produce factually correct answers for all four test queries as validated against known ground truth. | Must Have | 🔄 |
+| NFR-01 | Correctness | The system shall produce factually correct answers for all four test queries as validated against known ground truth. | Must Have | ✅ |
 | NFR-02 | Modularity | Each cognitive role shall be implemented in its own Python module; no role shall directly call another role's internal functions. | Must Have | ✅ |
 | NFR-03 | Typed Contracts | All inter-module data transfer shall use Pydantic v2 models; no raw dict passing between roles. | Must Have | ✅ |
 | NFR-04 | Dependency Mgmt | All Python packages shall be declared and installed via uv; no pip install commands shall be required. | Must Have | ✅ |
 | NFR-05 | Reproducibility | The state/ directory shall be cleanable without loss of code; re-running after cleaning shall produce the same final answers. | Must Have | ✅ |
 | NFR-06 | No Framework Lock-in | The solution shall not depend on LangGraph, LangChain, CrewAI, or any equivalent agentic framework. | Must Have | ✅ |
-| NFR-07 | Auditability | The terminal output for all four queries shall be captured and committed to the repository for external verification. | Should Have | ⬜ |
+| NFR-07 | Auditability | The terminal output for all four queries shall be captured and committed to the repository for external verification. | Should Have | ✅ |
 | NFR-08 | Licensing | The project shall be licensed under Apache 2.0. | Should Have | ✅ |
 
 ---
@@ -315,11 +315,11 @@ append to history, iterate
 | FR-08.1–2 | MCP Server | — | mcp_server.py | 9 tools confirmed in test output | ✅ |
 | FR-09.1–4 | LLM Gateway | — | llm_gatewayV3/ | Gateway health check + all runs | ✅ |
 | FR-10-A.1–4 | Query A: Shannon | [#10](https://github.com/sujitojha1/AgentiAI/issues/10) | agent6.py, action.py, decision.py | Terminal output — Query A | ✅ |
-| FR-10-B.1–4 | Query B: Tokyo | [#11](https://github.com/sujitojha1/AgentiAI/issues/11) | agent6.py | Terminal output — Query B | 🔄 |
+| FR-10-B.1–4 | Query B: Tokyo | [#11](https://github.com/sujitojha1/AgentiAI/issues/11) | agent6.py | Terminal output — Query B | ✅ |
 | FR-10-C.1–3 | Query C: Birthday | [#12](https://github.com/sujitojha1/AgentiAI/issues/12) | memory.py, agent6.py | Two-run memory persistence test | ✅ |
-| FR-10-D.1–3 | Query D: Asyncio | [#13](https://github.com/sujitojha1/AgentiAI/issues/13) | agent6.py, action.py, decision.py, perception.py | fetch_url×3 + synthesis test | 🔄 |
-| FR-11.1–8 | Deliverables | [#14](https://github.com/sujitojha1/AgentiAI/issues/14) | README, YouTube, PoP JSON | Deliverable checklist review | 🔄 |
-| NFR-01–08 | Non-Functional | — | All modules | Code review + output audit | 🔄 |
+| FR-10-D.1–3 | Query D: Asyncio | [#13](https://github.com/sujitojha1/AgentiAI/issues/13) | agent6.py, action.py, decision.py, perception.py | fetch_url×3 + synthesis test | ✅ |
+| FR-11.1–8 | Deliverables | [#14](https://github.com/sujitojha1/AgentiAI/issues/14) | README, YouTube, PoP JSON | Deliverable checklist review | ✅ |
+| NFR-01–08 | Non-Functional | — | All modules | Code review + output audit | ✅ |
 
 ---
 
