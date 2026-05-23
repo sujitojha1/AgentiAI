@@ -129,15 +129,16 @@ append to history, iterate
 
 ### FR-04 Perception Module
 
-**Reference**: [ISSUE-7] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-7] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-04.1 | The Perception module shall act as the orchestrator: on every iteration it shall read the query, memory hits, and history, then emit a typed Observation(goals). | Must Have | ⬜ |
-| FR-04.2 | The Perception module shall make one LLM call per iteration, pinned to Gemini via provider="g". | Must Have | ⬜ |
-| FR-04.3 | When all goals in the Observation have done=True, the Perception module shall signal loop termination. | Must Have | ⬜ |
-| FR-04.4 | The Perception module shall support multi-goal decomposition (emit more than one Goal per query when appropriate). | Must Have | ⬜ |
-| FR-04.5 | If a goal has an attach_artifact_id, the Perception module shall include the artifact reference in the next iteration context. | Must Have | ⬜ |
+| FR-04.1 | The Perception module shall act as the orchestrator: on every iteration it shall accept `(query, hits, history, prior_goals, run_id)` and emit a typed `Observation(goals)` via one Gemini LLM call. | Must Have | ✅ |
+| FR-04.2 | The Perception module shall make one LLM call per iteration, pinned to Gemini (`provider="gemini"`) with `auto_route="perception"` and `temperature=1.0` to avoid Gemini output loops. | Must Have | ✅ |
+| FR-04.3 | First iteration (empty prior_goals): decompose query into 1–5 kebab-id Goals with `done=false`. Subsequent iterations: do exactly one of — (A) update `done` flags from history evidence, or (B) set `attach_artifact_id` on the first unfinished goal. | Must Have | ✅ |
+| FR-04.4 | The Perception module shall support multi-goal decomposition (1–5 Goals per query) and preserve goal order and ids across iterations. | Must Have | ✅ |
+| FR-04.5 | The system prompt shall satisfy all PoP criteria: explicit step-by-step reasoning, structured JSON output enforced via `response_format=json_schema`, conversation-loop framing, internal self-checks ("only mark done on explicit evidence"), and an uncertainty fallback ("if unsure, keep done=false"). | Must Have | ✅ |
+| FR-04.6 | Memory hits shall be presented with integer `[artifact:N]` tags (not raw `art:` handles); `run_id` shall be included in the user message for run traceability. | Must Have | ✅ |
 
 ---
 
@@ -304,7 +305,7 @@ append to history, iterate
 | FR-01.1–5 | Project Setup | [#3](https://github.com/sujitojha1/AgentiAI/issues/3) | .env, .gitignore, pyproject.toml | Manual setup check | ⬜ |
 | FR-02.1–7 | Pydantic Schemas | [#4](https://github.com/sujitojha1/AgentiAI/issues/4) | schemas.py | Unit test schema instantiation | ✅ |
 | FR-03.1–5 | Memory Module | [#5](https://github.com/sujitojha1/AgentiAI/issues/5) | memory.py | Query C (durable memory) | ✅ |
-| FR-04.1–5 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ⬜ |
+| FR-04.1–6 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ✅ |
 | FR-05.1–4 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ⬜ |
 | FR-06.1–5 | Action Module | [#6](https://github.com/sujitojha1/AgentiAI/issues/6) | action.py | Query A, D (ArtifactStore path) | ✅ |
 | FR-07.1–5 | Agent Loop | [#9](https://github.com/sujitojha1/AgentiAI/issues/9) | agent6.py | All queries (end-to-end) | ⬜ |
