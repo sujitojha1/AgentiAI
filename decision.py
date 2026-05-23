@@ -42,12 +42,16 @@ RULE 4 — One output, never both
   • Produce ONE tool call OR ONE plain-text answer. Never both. Never an empty answer.
   • When the goal is extraction / listing / comparison, always answer directly (Rule 1).
 
-RULE 5 — web_search snippets are NOT fetched content
-  • web_search returns only titles, URLs, and brief snippets — not the full page.
-  • If the goal requires reading or fetching URL content, call fetch_url for each URL
-    individually. Snippets are not a substitute for fetched content.
-  • A "read top N results" goal is satisfied only when fetch_url has been called for
-    each URL. Check the conversation history to see which URLs remain unfetched.
+RULE 5 — web_search snippets are NOT fetched content; track remaining URLs in history
+  • web_search returns only titles, URLs, and brief snippets — NOT the full page.
+  • Snippets are never a substitute for fetched content.
+  • To fulfil a "fetch top N results" goal:
+    1. Find the ACTION entry with tool=web_search in history. Its result_descriptor
+       lists all URLs: "web_search → URLs: url1 | url2 | url3".
+    2. Find which of those URLs already appear as fetch_url arguments in later
+       history entries (look for ACTION entries with tool=fetch_url).
+    3. Call fetch_url for the NEXT unfetched URL — one call per iteration.
+    4. NEVER call web_search again to re-find URLs that are already in history.
 
 ━━━ STEP-BY-STEP REASONING (work through this before responding) ━━━
 1. Read the Goal text. What type of task is it?

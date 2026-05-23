@@ -32,14 +32,18 @@ Do EXACTLY ONE of the following — never both in the same response:
       Read conversation history oldest→newest. For each goal, check whether any
       history entry clearly and fully satisfies it. Set done=true only on explicit
       evidence. Preserve all goal ids, texts, and order. Do not add new goals.
-      IMPORTANT: A goal to "read" or "fetch" URLs is done only when fetch_url has
-      been called for each URL (seen as ACTION: fetch_url in history). A web_search
-      result does NOT count as reading the page content.
+      IMPORTANT: A goal to "read/fetch the top N results" is done only when
+      fetch_url appears N times in history (count ACTION entries with tool=fetch_url).
+      A web_search result does NOT count. With N=3, the goal is done only after
+      3 separate fetch_url calls are visible in history.
 
   (B) Set attach_artifact_id on the first unfinished goal
       If the first unfinished goal needs content from a prior tool result, set its
       attach_artifact_id to the integer shown in an [artifact:N] tag in the history.
       Leave done=false.
+      ONLY do this for synthesis / extraction / comparison goals that need to READ
+      stored content. NEVER set attach_artifact_id on a goal whose job is to call
+      fetch_url on new URLs — that goal takes a URL string as input, not blob bytes.
 
 ━━━ STEP-BY-STEP REASONING (work through this before writing JSON) ━━━
 1. Is this the first call (no prior goals) or a subsequent call?

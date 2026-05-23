@@ -88,14 +88,15 @@ def mcp_tools_for_decision(mcp_tools: list) -> list[dict]:
 # ── History helper ────────────────────────────────────────────────────────────
 
 def _web_search_descriptor(result_text: str) -> str:
-    """Extract bare URLs from web_search JSON so they're visible in history."""
-    try:
-        results = json.loads(result_text)
-        urls = [r.get("url", "") for r in results if isinstance(r, dict) and r.get("url")]
-        if urls:
-            return "web_search → URLs: " + " | ".join(urls)
-    except Exception:
-        pass
+    """Extract bare URLs from web_search output regardless of serialisation format.
+
+    FastMCP may return list[dict] as a JSON array OR as newline-joined
+    pretty-printed objects — both are handled via regex so no format assumption.
+    """
+    import re
+    urls = re.findall(r'"url":\s*"([^"]+)"', result_text)
+    if urls:
+        return "web_search → URLs: " + " | ".join(urls)
     return f"web_search → {result_text[:300]}"
 
 
@@ -173,6 +174,16 @@ async def run(query: str) -> str:
             attached: list[tuple[int, bytes]] = []
             seen_ids: set[int] = set()
 
+            # A goal that needs to call fetch_url for new URLs does NOT need
+            # previously fetched content as input — loading page blobs only
+            # confuses Decision into synthesising early.  Only supplement from
+            # history for synthesis / analysis / comparison goals.
+            _SYNTH_KW = {
+                "synth", "summar", "extract", "list", "compar", "analys",
+                "consensus", "agree", "review", "recommend",
+            }
+            is_synthesis = any(kw in goal.text.lower() for kw in _SYNTH_KW)
+
             # Priority 1: Perception's explicit attachment (if any)
             if goal.attach_artifact_id and artifacts.exists(goal.attach_artifact_id):
                 blob = artifacts.get_bytes(goal.attach_artifact_id)
@@ -181,18 +192,19 @@ async def run(query: str) -> str:
                 print(f"  [artifact]   loaded artifact:{goal.attach_artifact_id} "
                       f"({len(blob):,} bytes)")
 
-            # Priority 2: Supplement from history up to 3 total so Decision
-            # receives all fetched-page artifacts for multi-source synthesis.
-            for entry in reversed(history):
-                if len(attached) >= 3:
-                    break
-                art_id = entry.get("artifact_id")
-                if art_id and art_id not in seen_ids and artifacts.exists(art_id):
-                    blob = artifacts.get_bytes(art_id)
-                    attached.append((art_id, blob))
-                    seen_ids.add(art_id)
-                    print(f"  [artifact]   auto-loaded artifact:{art_id} "
-                          f"({len(blob):,} bytes)")
+            # Priority 2: For synthesis goals, supplement from history up to 3
+            # so Decision has all fetched pages for multi-source synthesis.
+            if is_synthesis:
+                for entry in reversed(history):
+                    if len(attached) >= 3:
+                        break
+                    art_id = entry.get("artifact_id")
+                    if art_id and art_id not in seen_ids and artifacts.exists(art_id):
+                        blob = artifacts.get_bytes(art_id)
+                        attached.append((art_id, blob))
+                        seen_ids.add(art_id)
+                        print(f"  [artifact]   auto-loaded artifact:{art_id} "
+                              f"({len(blob):,} bytes) for synthesis")
             attached.reverse()  # chronological order
 
             # ── Decision ──────────────────────────────────────────────────
