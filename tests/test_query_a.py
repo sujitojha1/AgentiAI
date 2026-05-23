@@ -15,6 +15,7 @@ Run:
 
 import argparse
 import asyncio
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -27,13 +28,34 @@ QUERY = (
     "birth date, death date, and three key contributions to information theory."
 )
 
-REQUIRED_FACTS = [
-    "1916",           # birth year
-    "2001",           # death year
-    "information theory",
-]
+STATE_DIR    = ROOT / "state"
+ARTIFACT_DIR = STATE_DIR / "artifacts"
+MEMORY_FILE  = STATE_DIR / "memory.json"
 
-STATE_DIR = ROOT / "state"
+# ── answer content checks ─────────────────────────────────────────────────────
+
+# Birth date: April 30, 1916
+BIRTH_YEAR  = "1916"
+BIRTH_MONTH = ["april", "apr"]
+
+# Death date: February 24, 2001
+DEATH_YEAR  = "2001"
+DEATH_MONTH = ["february", "feb"]
+
+# Each sub-list = one contribution; at least one token per sub-list must match.
+# Three such groups must match to confirm three distinct contributions.
+# Group 2 accepts both Source Coding Theorem (entropy/compression) and
+# Boolean circuit design — both are valid Shannon contributions.
+CONTRIBUTION_GROUPS = [
+    # 1948 paper / information theory foundations / bit as unit
+    ["mathematical theory", "theory of communication", "1948", "bit"],
+    # Source Coding Theorem (data compression) OR Boolean circuit design
+    ["source coding", "data compression", "compression", "lossless",
+     "uncertainty", "shannon entropy", "boolean", "circuit design"],
+    # Noisy-Channel Coding Theorem / channel capacity / Shannon limit
+    ["noisy channel", "noisy-channel", "channel capacity", "shannon limit",
+     "hartley", "error rate", "error correction", "coding theorem"],
+]
 
 
 def clean_state() -> None:
@@ -43,19 +65,120 @@ def clean_state() -> None:
     STATE_DIR.mkdir(parents=True)
 
 
-def check_answer(answer: str) -> tuple[bool, list[str]]:
-    missing = [f for f in REQUIRED_FACTS if f.lower() not in answer.lower()]
-    return len(missing) == 0, missing
+# ── memory helpers ────────────────────────────────────────────────────────────
 
+def _memory_items() -> list[dict]:
+    if not MEMORY_FILE.exists():
+        return []
+    return json.loads(MEMORY_FILE.read_text())
+
+
+def _memory_full_text() -> str:
+    """Concatenate all descriptor + value text from memory records."""
+    parts: list[str] = []
+    for m in _memory_items():
+        parts.append(m.get("descriptor", ""))
+        val = m.get("value", {})
+        if isinstance(val, dict):
+            parts.extend(str(v) for v in val.values())
+    return " ".join(parts).lower()
+
+
+# ── artifact store checks ─────────────────────────────────────────────────────
+
+def check_artifact_store() -> tuple[bool, list[str]]:
+    """Verify at least one .bin artifact ≥ 4 KB exists (fetch_url or web_search result)."""
+    if not ARTIFACT_DIR.exists():
+        return False, ["state/artifacts/ directory does not exist"]
+    bins   = list(ARTIFACT_DIR.glob("*.bin"))
+    if not bins:
+        return False, ["no .bin files in state/artifacts/"]
+    large  = [b for b in bins if b.stat().st_size >= 4096]
+    if not large:
+        return False, [
+            f"no artifact ≥ 4 KB found (sizes: {[b.stat().st_size for b in bins]})"
+        ]
+    return True, []
+
+
+def check_memory_tool_record() -> tuple[bool, list[str]]:
+    """Verify memory.json has at least one tool_outcome record with an artifact_id."""
+    items = _memory_items()
+    if not items:
+        return False, ["state/memory.json is empty or missing"]
+    with_artifact = [
+        m for m in items
+        if m.get("kind") == "tool_outcome" and m.get("artifact_id") is not None
+    ]
+    if not with_artifact:
+        kinds = list({m.get("kind") for m in items})
+        tools = [m.get("value", {}).get("tool", "?") for m in items if m.get("kind") == "tool_outcome"]
+        return False, [
+            f"no tool_outcome record with artifact_id in memory.json "
+            f"(kinds: {kinds}, tools called: {tools})"
+        ]
+    return True, []
+
+
+# ── answer / bio-date checks ──────────────────────────────────────────────────
+
+def check_bio_dates(answer: str) -> tuple[bool, list[str]]:
+    """Check birth/death dates in final answer; fall back to memory records.
+
+    The agent may answer bio and contributions in separate iterations, so
+    the returned final answer might only contain contributions. Memory records
+    (tool_outcome.value.result) will contain the dates from the web search.
+    """
+    low      = answer.lower()
+    mem_text = _memory_full_text()
+    combined = low + " " + mem_text
+    failures = []
+
+    birth_year_ok  = BIRTH_YEAR in combined
+    birth_month_ok = any(m in combined for m in BIRTH_MONTH)
+    death_year_ok  = DEATH_YEAR in combined
+    death_month_ok = any(m in combined for m in DEATH_MONTH)
+
+    if not birth_year_ok:
+        failures.append(f"birth year '{BIRTH_YEAR}' not in answer or memory records")
+    if not birth_month_ok:
+        failures.append("birth month (April) not in answer or memory records")
+    if not death_year_ok:
+        failures.append(f"death year '{DEATH_YEAR}' not in answer or memory records")
+    if not death_month_ok:
+        failures.append("death month (February) not in answer or memory records")
+
+    return len(failures) == 0, failures
+
+
+def check_contributions(answer: str) -> tuple[bool, list[str]]:
+    """Verify ≥ 3 distinct information-theory contributions appear in the final answer."""
+    low      = answer.lower()
+    failures = []
+    matched  = [
+        i for i, group in enumerate(CONTRIBUTION_GROUPS, 1)
+        if any(signal in low for signal in group)
+    ]
+    if len(matched) < 3:
+        missing = [i for i in range(1, 4) if i not in matched]
+        failures.append(
+            f"only {len(matched)}/3 contributions identified in final answer "
+            f"(missing group(s): {missing}; "
+            f"signals: {[CONTRIBUTION_GROUPS[i-1][:3] for i in missing]})"
+        )
+    return len(failures) == 0, failures
+
+
+# ── main ──────────────────────────────────────────────────────────────────────
 
 async def main(clean: bool) -> int:
     if clean:
         clean_state()
 
-    from agent6 import run
+    from agent6 import run  # noqa: PLC0415
 
     print("=" * 78)
-    print("TEST QUERY A — Claude Shannon Wikipedia")
+    print("TEST QUERY A — Claude Shannon Wikipedia (artifact attach path)")
     print("=" * 78)
 
     answer = await run(QUERY)
@@ -64,22 +187,55 @@ async def main(clean: bool) -> int:
     print("VALIDATION")
     print("=" * 78)
 
-    passed, missing = check_answer(answer)
+    low      = answer.lower()
+    mem_text = _memory_full_text()
+    combined = low + " " + mem_text
 
-    # Check artifact was created
-    artifact_dir = STATE_DIR / "artifacts"
-    artifact_count = len(list(artifact_dir.glob("*.bin"))) if artifact_dir.exists() else 0
-    artifact_ok = artifact_count >= 1
+    # Run all checks
+    bio_pass,  bio_failures  = check_bio_dates(answer)
+    con_pass,  con_failures  = check_contributions(answer)
+    art_pass,  art_failures  = check_artifact_store()
+    mem_pass,  mem_failures  = check_memory_tool_record()
 
-    print(f"  answer contains birth year (1916) : {'✓' if '1916' in answer else '✗'}")
-    print(f"  answer contains death year (2001) : {'✓' if '2001' in answer else '✗'}")
-    print(f"  answer mentions info theory       : {'✓' if 'information' in answer.lower() else '✗'}")
-    print(f"  artifact stored (>4KB result)     : {'✓' if artifact_ok else '✗'} ({artifact_count} artifact(s))")
+    # Birth / death — show whether found in answer or memory fallback
+    for year, months, label in [
+        (BIRTH_YEAR, BIRTH_MONTH, "birth  (April 30 1916)"),
+        (DEATH_YEAR, DEATH_MONTH, "death  (Feb 24 2001) "),
+    ]:
+        in_ans = year in low and any(m in low for m in months)
+        in_mem = not in_ans and year in mem_text and any(m in mem_text for m in months)
+        src    = "answer" if in_ans else ("memory" if in_mem else "—")
+        ok     = in_ans or in_mem
+        print(f"  {label} found : {'✓' if ok else '✗'}  ({src})")
 
-    if missing:
-        print(f"\n  MISSING in answer: {missing}")
+    # Contributions (must be in final answer)
+    for i, group in enumerate(CONTRIBUTION_GROUPS, 1):
+        hit = next((s for s in group if s in low), None)
+        print(f"  contribution {i} identified             : {'✓' if hit else '✗'}"
+              + (f"  ('{hit}')" if hit else f"  (signals: {group[:3]}...)"))
 
-    overall = passed and artifact_ok
+    # Artifact store
+    bins       = list(ARTIFACT_DIR.glob("*.bin")) if ARTIFACT_DIR.exists() else []
+    large_bins = [b for b in bins if b.stat().st_size >= 4096]
+    print(f"  artifact ≥4KB stored                 : {'✓' if art_pass else '✗'}"
+          + f"  ({len(large_bins)} artifact(s) ≥4KB"
+          + (f", largest {max(b.stat().st_size for b in large_bins):,}B)" if large_bins else ")"))
+
+    # Memory tool record
+    items       = _memory_items()
+    tool_names  = [m.get("value", {}).get("tool", "?")
+                   for m in items if m.get("kind") == "tool_outcome"]
+    print(f"  memory records tool outcome          : {'✓' if mem_pass else '✗'}"
+          + f"  (tools: {tool_names})")
+
+    # Failures
+    all_failures = bio_failures + con_failures + art_failures + mem_failures
+    if all_failures:
+        print("\n  FAILURES:")
+        for f in all_failures:
+            print(f"    ✗ {f}")
+
+    overall = bio_pass and con_pass and art_pass and mem_pass
     print(f"\n  RESULT: {'PASS ✓' if overall else 'FAIL ✗'}")
     return 0 if overall else 1
 

@@ -235,13 +235,13 @@ append to history, iterate
 
 #### FR-10-C: Mom's Birthday (Durable Memory Across Two Runs)
 
-**Reference**: [ISSUE-12] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-12] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-10-C.1 | When given Run 1 of Query C, the system shall store 15 May 2026 as a durable MemoryItem in state/memory.json. | Must Have | ⬜ |
-| FR-10-C.2 | When given Run 1 of Query C, the system shall produce calendar reminders for two weeks before and on the birthday. | Must Have | ⬜ |
-| FR-10-C.3 | When given Run 2 of Query C in a separate process, the system shall retrieve the birthday from state/memory.json without re-asking. | Must Have | ⬜ |
+| FR-10-C.1 | When given Run 1 of Query C, the system shall store 15 May 2026 as a durable MemoryItem in state/memory.json. | Must Have | ✅ |
+| FR-10-C.2 | When given Run 1 of Query C, the system shall produce calendar reminders for two weeks before and on the birthday. | Must Have | ✅ |
+| FR-10-C.3 | When given Run 2 of Query C in a separate process, the system shall retrieve the birthday from state/memory.json without re-asking. | Must Have | ✅ |
 
 #### FR-10-D: Asyncio Research (Multi-Source Synthesis)
 
@@ -316,7 +316,7 @@ append to history, iterate
 | FR-09.1–4 | LLM Gateway | — | llm_gatewayV3/ | Gateway health check | ⬜ |
 | FR-10-A.1–4 | Query A: Shannon | [#10](https://github.com/sujitojha1/AgentiAI/issues/10) | agent6.py, action.py, decision.py | Terminal output — Query A | ✅ |
 | FR-10-B.1–4 | Query B: Tokyo | [#11](https://github.com/sujitojha1/AgentiAI/issues/11) | agent6.py | Terminal output — Query B | ⬜ |
-| FR-10-C.1–3 | Query C: Birthday | [#12](https://github.com/sujitojha1/AgentiAI/issues/12) | memory.py, agent6.py | Two-run memory persistence test | ⬜ |
+| FR-10-C.1–3 | Query C: Birthday | [#12](https://github.com/sujitojha1/AgentiAI/issues/12) | memory.py, agent6.py | Two-run memory persistence test | ✅ |
 | FR-10-D.1–3 | Query D: Asyncio | [#13](https://github.com/sujitojha1/AgentiAI/issues/13) | agent6.py | Terminal output — Query D | ⬜ |
 | FR-11.1–8 | Deliverables | [#14](https://github.com/sujitojha1/AgentiAI/issues/14) | README, YouTube, PoP JSON | Deliverable checklist review | ⬜ |
 | NFR-01–08 | Non-Functional | — | All modules | Code review + output audit | ⬜ |
