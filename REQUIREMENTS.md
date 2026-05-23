@@ -144,14 +144,15 @@ append to history, iterate
 
 ### FR-05 Decision Module
 
-**Reference**: [ISSUE-8] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-8] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-05.1 | The Decision module shall make exactly one LLM call per unfinished goal per iteration. | Must Have | ⬜ |
-| FR-05.2 | The Decision module shall return a DecisionOutput where either answer or tool_call is populated, never both. | Must Have | ⬜ |
-| FR-05.3 | When DecisionOutput.answer is populated, the agent loop shall append the answer to history and continue without dispatching a tool. | Must Have | ⬜ |
-| FR-05.4 | When DecisionOutput.tool_call is populated, the agent loop shall pass it to the Action module for execution. | Must Have | ⬜ |
+| FR-05.1 | The Decision module shall make exactly one LLM call per unfinished goal via `Decision.next_step(goal, hits, attached, history, mcp_tools)` with `auto_route="decision"`, `tools=mcp_tools`, and `tool_choice="auto"`. | Must Have | ✅ |
+| FR-05.2 | The Decision module shall return a `DecisionOutput` where exactly one of `answer` or `tool_call` is populated: if `tool_calls[]` is non-empty in the response, wrap the first entry as `DecisionOutput(tool_call=...)`; otherwise wrap the text as `DecisionOutput(answer=...)`. | Must Have | ✅ |
+| FR-05.3 | The system prompt shall enforce the one-output rule with named Rules 1–4 and a self-check step, satisfying all PoP criteria: explicit step-by-step reasoning, task classification ([fetch]/[extract]/[summarise] etc.), tool/answer separation, self-checks, and error fallbacks. | Must Have | ✅ |
+| FR-05.4 | The Decision module shall normalise MCP `Tool` objects (with `inputSchema`) to gateway `ToolDef` format (with `input_schema`) before the LLM call. | Must Have | ✅ |
+| FR-05.5 | The system prompt shall handle `art:<id>` argument semantics: Decision may pass `"art:<integer_id>"` as a tool argument; the Action module resolves it to bytes before dispatch. | Must Have | ✅ |
 
 ---
 
@@ -306,7 +307,7 @@ append to history, iterate
 | FR-02.1–7 | Pydantic Schemas | [#4](https://github.com/sujitojha1/AgentiAI/issues/4) | schemas.py | Unit test schema instantiation | ✅ |
 | FR-03.1–5 | Memory Module | [#5](https://github.com/sujitojha1/AgentiAI/issues/5) | memory.py | Query C (durable memory) | ✅ |
 | FR-04.1–6 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ✅ |
-| FR-05.1–4 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ⬜ |
+| FR-05.1–5 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ✅ |
 | FR-06.1–5 | Action Module | [#6](https://github.com/sujitojha1/AgentiAI/issues/6) | action.py | Query A, D (ArtifactStore path) | ✅ |
 | FR-07.1–5 | Agent Loop | [#9](https://github.com/sujitojha1/AgentiAI/issues/9) | agent6.py | All queries (end-to-end) | ⬜ |
 | FR-08.1–2 | MCP Server | — | mcp_server.py | Tool call dispatch tests | ⬜ |
