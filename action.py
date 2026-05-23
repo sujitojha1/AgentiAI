@@ -125,7 +125,9 @@ class Action:
                 source=tool_call.name,
                 descriptor=descriptor,
             )
-            return descriptor, artifact_id
+            # Return full result_text (not just descriptor) so callers can
+            # store URLs / content in history even when an artifact is created.
+            return result_text, artifact_id
 
         return result_text, None
 

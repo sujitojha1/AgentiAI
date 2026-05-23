@@ -6,8 +6,9 @@ Expected flow:
   Iter 1  : web_search → 3 URLs
   Iter 2-4: fetch_url × 3, each result stored as artifact (>4KB)
   Iter 5+ : Perception attaches artifact to synthesis goal;
-            Decision reads content and produces numbered list
+            Decision reads all 3 fetched artifacts and produces numbered list
   Total   : 5–7 iterations
+  Checks  : ≥3 artifacts ≥4KB, 3 fetch_url outcomes with artifact_id
 
 Run:
     uv run python tests/test_query_d.py
@@ -76,18 +77,14 @@ def _tool_outcomes() -> list[dict]:
 # ── artifact store checks ─────────────────────────────────────────────────────
 
 def check_artifact_store() -> tuple[bool, list[str]]:
-    """Verify ≥ 1 artifact ≥ 4 KB exists.
-
-    The agent may synthesise from the web_search result artifact alone
-    (without separate fetch_url calls), so we accept any ≥4KB artifact.
-    """
+    """Verify ≥ 3 artifacts ≥ 4 KB exist — one per fetched URL."""
     if not ARTIFACT_DIR.exists():
         return False, ["state/artifacts/ directory does not exist"]
     bins  = list(ARTIFACT_DIR.glob("*.bin"))
     large = [b for b in bins if b.stat().st_size >= 4096]
-    if not large:
+    if len(large) < 3:
         return False, [
-            f"no artifact ≥4KB found "
+            f"expected ≥3 artifacts ≥4KB (one per fetched URL), found {len(large)} "
             f"(total .bin files: {len(bins)}, "
             f"sizes: {sorted((b.stat().st_size for b in bins), reverse=True)[:5]})"
         ]
@@ -95,7 +92,7 @@ def check_artifact_store() -> tuple[bool, list[str]]:
 
 
 def check_memory_records() -> tuple[bool, list[str]]:
-    """Verify memory.json has web_search recorded and ≥1 tool_outcome with artifact_id."""
+    """Verify memory.json has web_search + exactly 3 fetch_url outcomes with artifact_id."""
     outcomes = _tool_outcomes()
     if not outcomes:
         return False, ["no tool_outcome records in memory.json"]
@@ -106,10 +103,15 @@ def check_memory_records() -> tuple[bool, list[str]]:
     if "web_search" not in tools:
         failures.append(f"web_search not recorded in memory (tools seen: {tools})")
 
-    with_artifact = [m for m in outcomes if m.get("artifact_id") is not None]
-    if not with_artifact:
+    fetch_with_artifact = [
+        m for m in outcomes
+        if m.get("value", {}).get("tool") == "fetch_url"
+        and m.get("artifact_id") is not None
+    ]
+    if len(fetch_with_artifact) < 3:
         failures.append(
-            f"no tool_outcome with artifact_id in memory.json (tools: {tools})"
+            f"expected 3 fetch_url outcomes with artifact_id, "
+            f"found {len(fetch_with_artifact)} (tools seen: {tools})"
         )
 
     return len(failures) == 0, failures
@@ -204,17 +206,21 @@ async def main(clean: bool) -> int:
     bins      = list(ARTIFACT_DIR.glob("*.bin")) if ARTIFACT_DIR.exists() else []
     large     = [b for b in bins if b.stat().st_size >= 4096]
     sizes_kb  = sorted((b.stat().st_size // 1024 for b in large), reverse=True)
-    print(f"  artifact(s) ≥4KB stored             : {'✓' if art_pass else '✗'}"
+    print(f"  artifacts ≥4KB stored (need ≥3)     : {'✓' if art_pass else '✗'}"
           f"  ({len(large)} artifact(s), sizes: {sizes_kb[:5]} KB)")
 
     # Memory tool records
     outcomes  = _tool_outcomes()
     tools_seq = [m.get("value", {}).get("tool", "?") for m in outcomes]
     fetch_cnt = tools_seq.count("fetch_url")
-    with_art  = sum(1 for m in outcomes if m.get("artifact_id") is not None)
+    fetch_with_art = sum(
+        1 for m in outcomes
+        if m.get("value", {}).get("tool") == "fetch_url"
+        and m.get("artifact_id") is not None
+    )
     print(f"  web_search recorded in memory       : {'✓' if 'web_search' in tools_seq else '✗'}")
-    print(f"  tool outcome(s) with artifact_id    : {'✓' if mem_pass else '✗'}"
-          f"  ({with_art} record(s); fetch_url calls: {fetch_cnt})")
+    print(f"  fetch_url ×3 each with artifact_id  : {'✓' if mem_pass else '✗'}"
+          f"  ({fetch_cnt} fetch_url call(s); {fetch_with_art} with artifact_id)")
 
     all_failures = kw_failures + lst_failures + adv_failures + art_failures + mem_failures
     if all_failures:

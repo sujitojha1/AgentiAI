@@ -158,27 +158,29 @@ async def run(query: str) -> str:
 
             # ── Resolve artifact attachment ───────────────────────────────
             attached: list[tuple[int, bytes]] = []
+            seen_ids: set[int] = set()
+
+            # Priority 1: Perception's explicit attachment (if any)
             if goal.attach_artifact_id and artifacts.exists(goal.attach_artifact_id):
                 blob = artifacts.get_bytes(goal.attach_artifact_id)
                 attached.append((goal.attach_artifact_id, blob))
+                seen_ids.add(goal.attach_artifact_id)
                 print(f"  [artifact]   loaded artifact:{goal.attach_artifact_id} "
                       f"({len(blob):,} bytes)")
-            else:
-                # Synthesis goals have no explicit attachment; give Decision
-                # the two most recent artifacts from history so it can answer
-                # without trying to re-fetch them via file/tool calls.
-                seen: set[int] = set()
-                for entry in reversed(history):
-                    art_id = entry.get("artifact_id")
-                    if art_id and art_id not in seen and artifacts.exists(art_id):
-                        blob = artifacts.get_bytes(art_id)
-                        attached.append((art_id, blob))
-                        seen.add(art_id)
-                        print(f"  [artifact]   auto-loaded artifact:{art_id} "
-                              f"({len(blob):,} bytes) for synthesis")
-                        if len(attached) >= 2:
-                            break
-                attached.reverse()  # chronological order
+
+            # Priority 2: Supplement from history up to 3 total so Decision
+            # receives all fetched-page artifacts for multi-source synthesis.
+            for entry in reversed(history):
+                if len(attached) >= 3:
+                    break
+                art_id = entry.get("artifact_id")
+                if art_id and art_id not in seen_ids and artifacts.exists(art_id):
+                    blob = artifacts.get_bytes(art_id)
+                    attached.append((art_id, blob))
+                    seen_ids.add(art_id)
+                    print(f"  [artifact]   auto-loaded artifact:{art_id} "
+                          f"({len(blob):,} bytes)")
+            attached.reverse()  # chronological order
 
             # ── Decision ──────────────────────────────────────────────────
             out = decision.next_step(goal, hits, attached, history, tools)
@@ -200,7 +202,7 @@ async def run(query: str) -> str:
             # ── Memory record ─────────────────────────────────────────────
             memory.record_outcome(
                 tool_call=tc,
-                result_text=result_text,
+                result_text=result_text[:500],  # cap; full content lives in artifact
                 artifact_id=art_id,
                 run_id=run_id,
                 goal_id=goal.id,
