@@ -32,6 +32,9 @@ Do EXACTLY ONE of the following — never both in the same response:
       Read conversation history oldest→newest. For each goal, check whether any
       history entry clearly and fully satisfies it. Set done=true only on explicit
       evidence. Preserve all goal ids, texts, and order. Do not add new goals.
+      IMPORTANT: A goal to "read" or "fetch" URLs is done only when fetch_url has
+      been called for each URL (seen as ACTION: fetch_url in history). A web_search
+      result does NOT count as reading the page content.
 
   (B) Set attach_artifact_id on the first unfinished goal
       If the first unfinished goal needs content from a prior tool result, set its
@@ -103,7 +106,7 @@ class Perception:
                 lines.append(f"[iter {it}] ANSWER ({goal_id}): {text}")
             elif kind == "action":
                 tool = entry.get("tool", "?")
-                desc = (entry.get("result_descriptor") or "")[:200]
+                desc = (entry.get("result_descriptor") or "")[:400]
                 art = entry.get("artifact_id")
                 suffix = f" [artifact:{art}]" if art is not None else ""
                 lines.append(f"[iter {it}] ACTION ({goal_id}): {tool} → {desc}{suffix}")

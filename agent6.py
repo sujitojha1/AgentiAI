@@ -20,6 +20,7 @@ Wires four cognitive roles into a single iterative loop:
 """
 
 import asyncio
+import json
 import sys
 import time
 import uuid
@@ -85,6 +86,18 @@ def mcp_tools_for_decision(mcp_tools: list) -> list[dict]:
 
 
 # ── History helper ────────────────────────────────────────────────────────────
+
+def _web_search_descriptor(result_text: str) -> str:
+    """Extract bare URLs from web_search JSON so they're visible in history."""
+    try:
+        results = json.loads(result_text)
+        urls = [r.get("url", "") for r in results if isinstance(r, dict) and r.get("url")]
+        if urls:
+            return "web_search → URLs: " + " | ".join(urls)
+    except Exception:
+        pass
+    return f"web_search → {result_text[:300]}"
+
 
 def final_answer_from(history: list[dict]) -> str:
     """Return the last non-empty answer text from the history."""
@@ -209,10 +222,14 @@ async def run(query: str) -> str:
             )
 
             # ── Append action outcome to history ──────────────────────────
+            if tc.name == "web_search":
+                result_descriptor = _web_search_descriptor(result_text)
+            else:
+                result_descriptor = result_text[:300]
             history.append({"iter": it, "kind": "action",
                             "goal_id": goal.id, "tool": tc.name,
                             "arguments": tc.arguments,
-                            "result_descriptor": result_text[:300],
+                            "result_descriptor": result_descriptor,
                             "artifact_id": art_id})
 
         else:

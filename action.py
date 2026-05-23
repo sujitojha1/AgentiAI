@@ -118,6 +118,12 @@ class Action:
         blob = result_text.encode("utf-8")
         descriptor = f"{tool_call.name} → {result_text[:80].strip()}"
 
+        # web_search returns navigation metadata (URLs + snippets), not page
+        # content. Never artifact-ize it — callers must use fetch_url to read
+        # the actual pages.
+        if tool_call.name == "web_search":
+            return result_text, None
+
         if len(blob) > ARTIFACT_THRESHOLD_BYTES:
             artifact_id = self.store.put(
                 blob=blob,

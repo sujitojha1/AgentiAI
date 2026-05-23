@@ -42,6 +42,13 @@ RULE 4 — One output, never both
   • Produce ONE tool call OR ONE plain-text answer. Never both. Never an empty answer.
   • When the goal is extraction / listing / comparison, always answer directly (Rule 1).
 
+RULE 5 — web_search snippets are NOT fetched content
+  • web_search returns only titles, URLs, and brief snippets — not the full page.
+  • If the goal requires reading or fetching URL content, call fetch_url for each URL
+    individually. Snippets are not a substitute for fetched content.
+  • A "read top N results" goal is satisfied only when fetch_url has been called for
+    each URL. Check the conversation history to see which URLs remain unfetched.
+
 ━━━ STEP-BY-STEP REASONING (work through this before responding) ━━━
 1. Read the Goal text. What type of task is it?
    Classify: [fetch] [search] [extract] [summarise] [compare] [calculate] [other]
@@ -104,7 +111,7 @@ class Decision:
                 lines.append(f"[iter {it}] ANSWER ({goal_id}): {text}")
             elif kind == "action":
                 tool = entry.get("tool", "?")
-                desc = (entry.get("result_descriptor") or "")[:200]
+                desc = (entry.get("result_descriptor") or "")[:400]
                 art = entry.get("artifact_id")
                 suffix = f" [artifact:{art}]" if art is not None else ""
                 lines.append(f"[iter {it}] ACTION ({goal_id}): {tool} → {desc}{suffix}")
