@@ -140,6 +140,16 @@ async def run(query: str) -> str:
 
             # ── Loop termination ──────────────────────────────────────────
             if obs.all_done:
+                # If all goals are done but no answer was synthesized yet
+                # (last step was a tool call), ask Decision to produce one.
+                has_answer = any(e.get("kind") == "answer" for e in history)
+                if not has_answer and obs.goals:
+                    last_goal = obs.goals[-1]
+                    out = decision.next_step(last_goal, hits, [], history, tools)
+                    if out.is_answer:
+                        print(f"  [decision]   final answer: {out.answer[:120]!r}")
+                        history.append({"iter": it, "kind": "answer",
+                                        "goal_id": last_goal.id, "text": out.answer})
                 print("  [loop]       all goals done — terminating\n")
                 break
 
