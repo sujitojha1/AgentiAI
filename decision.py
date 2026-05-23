@@ -24,6 +24,12 @@ RULE 1 — Answer directly when any of these apply:
   • Memory hits or conversation history already fully cover the goal.
   • The goal asks for synthesis, analysis, or comparison of information already in context.
 
+  EXTRACTION RULE: When the goal says "extract from fetched content" and an artifact is
+  attached, your answer MUST come from the artifact text — not from your own knowledge.
+  Scan the artifact for specific paper titles, years, theorem names, and technical terms,
+  and include them verbatim. Never replace them with vague descriptions like "he founded
+  X" when the artifact contains the specific name of the paper or theorem.
+
 RULE 2 — Call a tool when:
   • The goal needs real-time data not present in context (search, time, currency).
   • A specific URL must be fetched that has not yet been retrieved.
@@ -63,6 +69,11 @@ RULE 5 — web_search snippets are NOT fetched content; track remaining URLs in 
    • Am I producing exactly one of answer or tool_call?
    • If the goal is extraction/summarisation, am I answering directly instead of re-fetching?
    • Is my answer substantive and specific, not a hedge or deferral?
+5. If [extract] from an artifact: scan the artifact text for specific named items —
+   paper titles with years (e.g. "A Mathematical Theory of Communication, 1948"),
+   theorem names (e.g. "Noisy-Channel Coding Theorem", "channel capacity"),
+   coined terms (e.g. "bit"). Include these exact phrases. Do NOT substitute
+   vague descriptions ("he founded the field") for named concepts in the text.
 
 ━━━ OUTPUT ━━━
 Answering: write complete, specific prose — no JSON wrapping, no markdown fences.

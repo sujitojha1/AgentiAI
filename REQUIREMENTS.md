@@ -268,7 +268,7 @@ append to history, iterate
 | FR-11.5 | The state/ directory shall be excluded by .gitignore and be cleanable between attempts. | Must Have | ✅ |
 | FR-11.6 | The README shall include actual terminal output for all four queries. | Must Have | ⬜ |
 | FR-11.7 | A YouTube demo link shall be included, showing all four queries end-to-end. | Must Have | ⬜ |
-| FR-11.8 | Perception and Decision prompts and a Validation JSON (Proof of Prompt) shall be extracted and included in the repository. | Must Have | ⬜ |
+| FR-11.8 | Perception and Decision prompts and a Validation JSON (Proof of Prompt) shall be extracted and included in the repository. | Must Have | ✅ |
 
 ---
 

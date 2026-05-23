@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "project": "AgentiAI — Session 6 Agentic Architecture",
+    "evaluator_prompt": "pop_validation.md",
+    "date": "2026-05-23",
+    "criteria": [
+      "explicit_reasoning",
+      "structured_output",
+      "tool_separation",
+      "conversation_loop",
+      "instructional_framing",
+      "internal_self_checks",
+      "reasoning_type_awareness",
+      "fallbacks",
+      "overall_clarity"
+    ]
+  },
+
+  "prompts": {
+    "decision": {
+      "source_file": "decision.py",
+      "role": "Decision module — single LLM call returning answer or tool_call per iteration",
+      "full_prompt": "You are the Decision module of an agentic AI system.\nFor the current Goal, emit exactly ONE of: a plain-text answer OR a single tool call.\n\n━━━ RULES ━━━\n\nRULE 1 — Answer directly when any of these apply:\n  • The attached artifact already contains what the goal needs (extract, list, summarise, compare).\n  • Memory hits or conversation history already fully cover the goal.\n  • The goal asks for synthesis, analysis, or comparison of information already in context.\n\n  EXTRACTION RULE: When the goal says \"extract from fetched content\" and an artifact is\n  attached, your answer MUST come from the artifact text — not from your own knowledge.\n  Scan the artifact for specific paper titles, years, theorem names, and technical terms,\n  and include them verbatim. Never replace them with vague descriptions like \"he founded\n  X\" when the artifact contains the specific name of the paper or theorem.\n\nRULE 2 — Call a tool when:\n  • The goal needs real-time data not present in context (search, time, currency).\n  • A specific URL must be fetched that has not yet been retrieved.\n  • No existing context can satisfy the goal.\n\nRULE 3 — art: handles and artifacts\n  • Artifact content is provided in the ## Attached artifact section — read it there.\n  • Never call read_file or fetch_url to access an artifact. read_file is for sandbox\n    files you previously created; artifacts are not sandbox files.\n  • If you must pass an artifact to a tool argument, use \"art:<integer_id>\" — the\n    Action module resolves it to real bytes before dispatch.\n  • If the ## Attached artifact section contains enough information to answer, do so\n    directly (Rule 1) — do not make an additional tool call to re-read it.\n\nRULE 4 — One output, never both\n  • Produce ONE tool call OR ONE plain-text answer. Never both. Never an empty answer.\n  • When the goal is extraction / listing / comparison, always answer directly (Rule 1).\n\nRULE 5 — web_search snippets are NOT fetched content; track remaining URLs in history\n  • web_search returns only titles, URLs, and brief snippets — NOT the full page.\n  • Snippets are never a substitute for fetched content.\n  • To fulfil a \"fetch top N results\" goal:\n    1. Find the ACTION entry with tool=web_search in history. Its result_descriptor\n       lists all URLs: \"web_search → URLs: url1 | url2 | url3\".\n    2. Find which of those URLs already appear as fetch_url arguments in later\n       history entries (look for ACTION entries with tool=fetch_url).\n    3. Call fetch_url for the NEXT unfetched URL — one call per iteration.\n    4. NEVER call web_search again to re-find URLs that are already in history.\n\n━━━ STEP-BY-STEP REASONING (work through this before responding) ━━━\n1. Read the Goal text. What type of task is it?\n   Classify: [fetch] [search] [extract] [summarise] [compare] [calculate] [other]\n2. Check the attached artifact and conversation history.\n   Can the goal be fully answered from existing context? → YES: write the answer (Rule 1).\n3. If NO: identify the single best tool call. Emit it (Rule 2).\n4. Self-check before output:\n   • Am I producing exactly one of answer or tool_call?\n   • If the goal is extraction/summarisation, am I answering directly instead of re-fetching?\n   • Is my answer substantive and specific, not a hedge or deferral?\n5. If [extract] from an artifact: scan the artifact text for specific named items —\n   paper titles with years (e.g. \"A Mathematical Theory of Communication, 1948\"),\n   theorem names (e.g. \"Noisy-Channel Coding Theorem\", \"channel capacity\"),\n   coined terms (e.g. \"bit\"). Include these exact phrases. Do NOT substitute\n   vague descriptions (\"he founded the field\") for named concepts in the text.\n\n━━━ OUTPUT ━━━\nAnswering: write complete, specific prose — no JSON wrapping, no markdown fences.\nTool call: the gateway captures tool calls natively from your response.",
+
+      "validation": {
+        "explicit_reasoning": true,
+        "structured_output": true,
+        "tool_separation": true,
+        "conversation_loop": true,
+        "instructional_framing": true,
+        "internal_self_checks": true,
+        "reasoning_type_awareness": true,
+        "fallbacks": false,
+        "overall_clarity": "Strong. Five named rules with clear headings prevent goal confusion. Task-type classification ([fetch]/[extract]/[summarise]) gives explicit reasoning-type awareness. The EXTRACTION RULE and Step 5 ground answers in artifact text, reducing hallucination. The RULE 5 algorithm (4 numbered sub-steps with an example descriptor format) is unambiguous. Gap: no explicit fallback for when the artifact is truncated or does not contain the expected information — the model may silently fall back to parametric knowledge in that edge case."
+      },
+
+      "criterion_notes": {
+        "explicit_reasoning": "The '━━━ STEP-BY-STEP REASONING (work through this before responding) ━━━' header with a 5-step numbered checklist mandates reasoning before output.",
+        "structured_output": "RULE 4 enforces exactly one output type. The OUTPUT section defines two mutually exclusive formats (plain prose vs. native tool call). The gateway parses tool calls; the test suite checks prose content — both are validatable.",
+        "tool_separation": "RULE 1 (answer) vs RULE 2 (tool call) is a binary, exclusive choice. RULE 3 separates artifact access (read from ## Attached artifact section) from tool dispatch (MCP call). RULE 5 separates search metadata from content-fetching tool calls.",
+        "conversation_loop": "History is referenced in Step 2 ('Check the attached artifact and conversation history'), in RULE 1 ('conversation history already fully cover the goal'), and in RULE 5 ('Find which URLs already appear as fetch_url arguments in later history entries'). The prompt is designed to be called once per iteration with an updated history each time.",
+        "instructional_framing": "Concrete examples appear in three places: RULE 5 sub-step 1 shows the exact history descriptor format ('web_search → URLs: url1 | url2 | url3'); Step 5 quotes paper names ('A Mathematical Theory of Communication, 1948') and terms ('bit'); EXTRACTION RULE gives a negative example ('Never replace them with vague descriptions like \"he founded X\"').",
+        "internal_self_checks": "Step 4 is labelled 'Self-check before output' and contains three verifiable questions: output cardinality, extraction-vs-refetch, and answer specificity.",
+        "reasoning_type_awareness": "Step 1 requires classifying the task into one of seven named types: [fetch] [search] [extract] [summarise] [compare] [calculate] [other]. This explicit tagging guides which subsequent rule applies.",
+        "fallbacks": "RULE 4 prevents empty answers. However, there is no explicit instruction for what to do when the attached artifact is truncated and does not contain the required information — the model may silently use parametric knowledge without flagging uncertainty.",
+        "overall_clarity": "See overall_clarity field in validation object."
+      }
+    },
+
+    "perception": {
+      "source_file": "perception.py",
+      "role": "Perception module — orchestrator that decomposes and tracks Goals across iterations",
+      "full_prompt": "You are the Perception module of an agentic AI system.\nYour sole responsibility: maintain a structured Goal list that drives the agent loop.\n\n━━━ FIRST CALL (Current goals = none) ━━━\nDecompose the user query into 1–5 clear, actionable Goals.\n• Assign each goal a unique kebab-case id (e.g. \"fetch-weather\", \"summarise-article\").\n• Set done=false and attach_artifact_id=null for every goal.\n• Each goal must be specific enough for the Decision module to act on independently.\n\n━━━ SUBSEQUENT CALLS (Current goals provided) ━━━\nDo EXACTLY ONE of the following — never both in the same response:\n\n  (A) Update done flags\n      Read conversation history oldest→newest. For each goal, check whether any\n      history entry clearly and fully satisfies it. Set done=true only on explicit\n      evidence. Preserve all goal ids, texts, and order. Do not add new goals.\n      IMPORTANT: A goal to \"read/fetch the top N results\" is done only when\n      fetch_url appears N times in history (count ACTION entries with tool=fetch_url).\n      A web_search result does NOT count. With N=3, the goal is done only after\n      3 separate fetch_url calls are visible in history.\n\n  (B) Set attach_artifact_id on the first unfinished goal\n      If the first unfinished goal needs content from a prior tool result, set its\n      attach_artifact_id to the integer shown in an [artifact:N] tag in the history.\n      Leave done=false.\n      ONLY do this for synthesis / extraction / comparison goals that need to READ\n      stored content. NEVER set attach_artifact_id on a goal whose job is to call\n      fetch_url on new URLs — that goal takes a URL string as input, not blob bytes.\n\n━━━ STEP-BY-STEP REASONING (work through this before writing JSON) ━━━\n1. Is this the first call (no prior goals) or a subsequent call?\n2. For each existing goal, find the history entry — if any — that satisfies it.\n3. Does the first unfinished goal need artifact bytes to proceed?\n   Yes → action B.  No → action A.\n4. Self-check: am I marking any goal done without explicit history evidence?\n   If yes, keep it false. When in doubt, keep done=false.\n\n━━━ OUTPUT ━━━\nReturn a single JSON object — no markdown, no prose, no extra keys:\n{\"goals\": [{\"id\": \"...\", \"text\": \"...\", \"done\": true|false, \"attach_artifact_id\": null|<integer>}]}",
+
+      "validation": {
+        "explicit_reasoning": true,
+        "structured_output": true,
+        "tool_separation": true,
+        "conversation_loop": true,
+        "instructional_framing": true,
+        "internal_self_checks": true,
+        "reasoning_type_awareness": false,
+        "fallbacks": true,
+        "overall_clarity": "Very strong. The FIRST CALL / SUBSEQUENT CALLS bifurcation is the clearest possible framing for a stateful multi-turn orchestrator. Action A vs. Action B is an exclusive binary enforced by 'EXACTLY ONE'. The json_schema response_format in code provides a hard structural guarantee. Gap: step-by-step reasoning does not explicitly tag the reasoning type being applied at each step (e.g. [count], [lookup], [infer]) — the model infers this implicitly."
+      },
+
+      "criterion_notes": {
+        "explicit_reasoning": "'━━━ STEP-BY-STEP REASONING (work through this before writing JSON) ━━━' with a 4-step numbered checklist mandates pre-output reasoning. Step 2 ('for each existing goal, find the history entry that satisfies it') is an explicit traversal instruction.",
+        "structured_output": "Output is strictly a JSON object enforced by both the prompt ('no markdown, no prose, no extra keys') and the code-level response_format=json_schema with a full schema. Every field is named with type constraints — the most strongly structured output in the system.",
+        "tool_separation": "Action A (update done flags) and Action B (set attach_artifact_id) are mutually exclusive and clearly named. Step 3 is the explicit decision rule between them. The NEVER attach_artifact_id on fetch goals rule prevents mixing the attachment mechanism into a tool-dispatch goal.",
+        "conversation_loop": "The entire prompt is built around multi-turn awareness: FIRST CALL vs SUBSEQUENT CALLS, 'Read conversation history oldest→newest', 'Preserve all goal ids, texts, and order'. History is the primary input driving every subsequent-call decision.",
+        "instructional_framing": "Concrete examples: goal IDs as 'fetch-weather', 'summarise-article'; JSON output structure with all four fields shown; counting instruction ('fetch_url appears N times in history — with N=3, done only after 3 separate fetch_url calls'); negative examples ('NEVER set attach_artifact_id on a goal whose job is to call fetch_url on new URLs').",
+        "internal_self_checks": "Step 4 is an explicit self-check: 'am I marking any goal done without explicit history evidence? If yes, keep it false. When in doubt, keep done=false.' This provides both a verifiability criterion and an uncertainty fallback.",
+        "reasoning_type_awareness": "The prompt does not ask the model to tag or name the type of reasoning being performed at each step (e.g. [count fetch_url calls], [lookup artifact tag], [infer goal satisfaction]). The A/B decision in Step 3 is a binary classification but is not labelled as such.",
+        "fallbacks": "'When in doubt, keep done=false' is an explicit uncertainty fallback that prevents false-positive goal completion — the most consequential error in an orchestrator. 'Set done=true only on explicit evidence' reinforces conservative goal tracking.",
+        "overall_clarity": "See overall_clarity field in validation object."
+      }
+    }
+  },
+
+  "summary": {
+    "decision_score": "8 / 9 criteria met (missing: fallbacks — no guidance when artifact is truncated or missing expected content)",
+    "perception_score": "8 / 9 criteria met (missing: reasoning_type_awareness — step-by-step labels present but reasoning types not explicitly tagged per step)",
+    "shared_strengths": [
+      "Both prompts use unicode section dividers (━━━) and named rule labels for visual structure",
+      "Both include explicit self-check steps before output",
+      "Both are designed for iterative multi-turn loops with full history context",
+      "Both use negative examples ('NEVER', 'Do NOT') alongside positive instructions",
+      "Both enforce a single exclusive output choice (answer vs tool_call; action A vs action B)"
+    ],
+    "improvement_opportunities": [
+      "Decision: add a fallback instruction for when the attached artifact is truncated and does not contain the information needed to satisfy the extraction goal",
+      "Perception: tag each reasoning step with its reasoning type (e.g. [count], [lookup artifact], [infer from evidence]) to improve reasoning-type awareness",
+      "Both: add an explicit instruction for what to do when history is empty or malformed"
+    ]
+  }
+}
