@@ -156,14 +156,15 @@ append to history, iterate
 
 ### FR-06 Action Module
 
-**Reference**: [ISSUE-6] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-6] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-06.1 | The Action module shall dispatch all tool calls via MCP stdio transport and shall make no LLM calls. | Must Have | ⬜ |
-| FR-06.2 | When a tool response payload exceeds 4 KB, the Action module shall store it in the ArtifactStore and return an artifact_id instead of inline content. | Must Have | ⬜ |
-| FR-06.3 | The ArtifactStore shall use content-addressable naming: art:<sha256-prefix>.bin for payload and .json for metadata. | Must Have | ⬜ |
-| FR-06.4 | The Action module shall return a (descriptor, artifact_id?) tuple to the agent loop for each executed tool call. | Must Have | ⬜ |
+| FR-06.1 | The Action module shall dispatch all tool calls via MCP stdio transport (`session.call_tool`) and shall make no LLM calls. | Must Have | ✅ |
+| FR-06.2 | When a tool response payload exceeds 4 KB (`ARTIFACT_THRESHOLD_BYTES`), the Action module shall store it in the ArtifactStore and return an artifact_id instead of inline content. | Must Have | ✅ |
+| FR-06.3 | The ArtifactStore shall use incrementing integer IDs; blobs stored as `state/artifacts/<id:06d>.bin`, metadata as `<id:06d>.json`, and a `_counter.json` persists the next available ID across restarts. | Must Have | ✅ |
+| FR-06.4 | The Action module shall return a `(descriptor, artifact_id?)` tuple to the agent loop for each executed tool call; `artifact_id` is `int` matching the `Artifact` schema. | Must Have | ✅ |
+| FR-06.5 | The Action module shall resolve `art:<id>` string handles in tool arguments by substituting the stored artifact content before dispatching the MCP call. | Must Have | ✅ |
 
 ---
 
@@ -305,7 +306,7 @@ append to history, iterate
 | FR-03.1–5 | Memory Module | [#5](https://github.com/sujitojha1/AgentiAI/issues/5) | memory.py | Query C (durable memory) | ✅ |
 | FR-04.1–5 | Perception Module | [#7](https://github.com/sujitojha1/AgentiAI/issues/7) | perception.py | All queries (goal decomposition) | ⬜ |
 | FR-05.1–4 | Decision Module | [#8](https://github.com/sujitojha1/AgentiAI/issues/8) | decision.py | All queries (answer/tool dispatch) | ⬜ |
-| FR-06.1–4 | Action Module | [#6](https://github.com/sujitojha1/AgentiAI/issues/6) | action.py | Query A, D (ArtifactStore path) | ⬜ |
+| FR-06.1–5 | Action Module | [#6](https://github.com/sujitojha1/AgentiAI/issues/6) | action.py | Query A, D (ArtifactStore path) | ✅ |
 | FR-07.1–5 | Agent Loop | [#9](https://github.com/sujitojha1/AgentiAI/issues/9) | agent6.py | All queries (end-to-end) | ⬜ |
 | FR-08.1–2 | MCP Server | — | mcp_server.py | Tool call dispatch tests | ⬜ |
 | FR-09.1–4 | LLM Gateway | — | llm_gatewayV3/ | Gateway health check | ⬜ |
