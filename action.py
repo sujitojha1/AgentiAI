@@ -58,16 +58,18 @@ class Action:
         self.store = store or ArtifactStore()
 
     def _resolve_art_handles(self, arguments: dict) -> dict:
-        """Replace 'art:<id>' string arguments with the artifact's text content."""
+        """Replace 'art:<id>' or 'artifact:<id>' arguments with artifact text content."""
+        import re
+        _pattern = re.compile(r"^(?:art|artifact):(\d+)$", re.IGNORECASE)
         resolved = {}
         for key, val in arguments.items():
-            if isinstance(val, str) and val.startswith("art:"):
+            m = _pattern.match(val) if isinstance(val, str) else None
+            if m:
                 try:
-                    artifact_id = int(val[4:])
-                    blob = self.store.get_bytes(artifact_id)
+                    blob = self.store.get_bytes(int(m.group(1)))
                     resolved[key] = blob.decode("utf-8", errors="replace")
                 except Exception:
-                    resolved[key] = val  # pass through unchanged if unresolvable
+                    resolved[key] = val
             else:
                 resolved[key] = val
         return resolved
@@ -79,6 +81,23 @@ class Action:
     ) -> tuple[str, Optional[int]]:
         """Dispatch tool via MCP. Returns (descriptor_or_text, artifact_id?)."""
         arguments = self._resolve_art_handles(tool_call.arguments)
+
+        # If any argument was resolved from an art handle into full content
+        # (long string, clearly not a valid file path or URL), the LLM tried
+        # to pass artifact bytes to a path/url tool. Skip the MCP call and
+        # return the resolved content directly so it re-enters the loop.
+        for val in arguments.values():
+            if isinstance(val, str) and len(val) > 512:
+                blob = val.encode("utf-8")
+                descriptor = f"{tool_call.name}[artifact-resolved] → {val[:80].strip()}"
+                if len(blob) > ARTIFACT_THRESHOLD_BYTES:
+                    artifact_id = self.store.put(
+                        blob=blob, content_type="text/plain",
+                        source="artifact-resolved", descriptor=descriptor,
+                    )
+                    return descriptor, artifact_id
+                return val, None
+
         result = await session.call_tool(tool_call.name, arguments=arguments)
 
         if result.isError:

@@ -163,6 +163,22 @@ async def run(query: str) -> str:
                 attached.append((goal.attach_artifact_id, blob))
                 print(f"  [artifact]   loaded artifact:{goal.attach_artifact_id} "
                       f"({len(blob):,} bytes)")
+            else:
+                # Synthesis goals have no explicit attachment; give Decision
+                # the two most recent artifacts from history so it can answer
+                # without trying to re-fetch them via file/tool calls.
+                seen: set[int] = set()
+                for entry in reversed(history):
+                    art_id = entry.get("artifact_id")
+                    if art_id and art_id not in seen and artifacts.exists(art_id):
+                        blob = artifacts.get_bytes(art_id)
+                        attached.append((art_id, blob))
+                        seen.add(art_id)
+                        print(f"  [artifact]   auto-loaded artifact:{art_id} "
+                              f"({len(blob):,} bytes) for synthesis")
+                        if len(attached) >= 2:
+                            break
+                attached.reverse()  # chronological order
 
             # ── Decision ──────────────────────────────────────────────────
             out = decision.next_step(goal, hits, attached, history, tools)

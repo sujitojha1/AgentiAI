@@ -213,13 +213,14 @@ append to history, iterate
 
 #### FR-10-A: Shannon Wikipedia (Artifact Attach Path)
 
-**Reference**: [ISSUE-10] · **Status**: ⬜ Not Started
+**Reference**: [ISSUE-10] · **Status**: ✅ Met
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-10-A.1 | When given Query A, the system shall fetch https://en.wikipedia.org/wiki/Claude_Shannon and extract his birth date, death date, and three key contributions to information theory. | Must Have | ⬜ |
-| FR-10-A.2 | When the fetched Wikipedia page exceeds 4 KB, the system shall store it in the ArtifactStore and attach the artifact to the next Perception goal. | Must Have | ⬜ |
-| FR-10-A.3 | The final answer for Query A shall include the birth date, death date, and three contributions as verified by terminal output. | Must Have | ⬜ |
+| FR-10-A.1 | When given Query A, the system fetched https://en.wikipedia.org/wiki/Claude_Shannon and extracted birth date (April 30, 1916), death date (February 24, 2001), and three key contributions to information theory. | Must Have | ✅ |
+| FR-10-A.2 | The fetched Wikipedia page (262,600 bytes) exceeded 4 KB and was stored as artifact:1 in the ArtifactStore; Perception correctly set `attach_artifact_id=1` on the extraction goal in iter 2. | Must Have | ✅ |
+| FR-10-A.3 | The final answer included birth date, death date, and three named contributions (Mathematical Theory of Communication, Boolean circuit design, Shannon-Hartley Theorem); PASS ✓ in 5 iterations (78s). | Must Have | ✅ |
+| FR-10-A.4 | Decision attached blob truncated to 16 KB before LLM call to stay within LARGE tier (gateway rejects HUGE > 8K tokens); artifact answer extracted correctly from first 16 KB of the Wikipedia page. | Must Have | ✅ |
 
 #### FR-10-B: Tokyo Activities with Weather (Multi-Goal + Memory Carryover)
 
@@ -313,7 +314,7 @@ append to history, iterate
 | FR-07.1–6 | Agent Loop | [#9](https://github.com/sujitojha1/AgentiAI/issues/9) | agent6.py | All queries (end-to-end) | ✅ |
 | FR-08.1–2 | MCP Server | — | mcp_server.py | Tool call dispatch tests | ⬜ |
 | FR-09.1–4 | LLM Gateway | — | llm_gatewayV3/ | Gateway health check | ⬜ |
-| FR-10-A.1–3 | Query A: Shannon | [#10](https://github.com/sujitojha1/AgentiAI/issues/10) | agent6.py | Terminal output — Query A | ⬜ |
+| FR-10-A.1–4 | Query A: Shannon | [#10](https://github.com/sujitojha1/AgentiAI/issues/10) | agent6.py, action.py, decision.py | Terminal output — Query A | ✅ |
 | FR-10-B.1–4 | Query B: Tokyo | [#11](https://github.com/sujitojha1/AgentiAI/issues/11) | agent6.py | Terminal output — Query B | ⬜ |
 | FR-10-C.1–3 | Query C: Birthday | [#12](https://github.com/sujitojha1/AgentiAI/issues/12) | memory.py, agent6.py | Two-run memory persistence test | ⬜ |
 | FR-10-D.1–3 | Query D: Asyncio | [#13](https://github.com/sujitojha1/AgentiAI/issues/13) | agent6.py | Terminal output — Query D | ⬜ |

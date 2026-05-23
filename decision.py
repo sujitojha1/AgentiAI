@@ -29,10 +29,14 @@ RULE 2 — Call a tool when:
   • A specific URL must be fetched that has not yet been retrieved.
   • No existing context can satisfy the goal.
 
-RULE 3 — art: handles
-  • To pass artifact content to a tool, use "art:<integer_id>" as the argument value.
-  • The Action module resolves these handles to real bytes before dispatch.
-  • Do NOT fabricate file paths or URLs for artifacts.
+RULE 3 — art: handles and artifacts
+  • Artifact content is provided in the ## Attached artifact section — read it there.
+  • Never call read_file or fetch_url to access an artifact. read_file is for sandbox
+    files you previously created; artifacts are not sandbox files.
+  • If you must pass an artifact to a tool argument, use "art:<integer_id>" — the
+    Action module resolves it to real bytes before dispatch.
+  • If the ## Attached artifact section contains enough information to answer, do so
+    directly (Rule 1) — do not make an additional tool call to re-read it.
 
 RULE 4 — One output, never both
   • Produce ONE tool call OR ONE plain-text answer. Never both. Never an empty answer.
