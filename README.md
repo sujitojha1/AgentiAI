@@ -507,12 +507,12 @@ VALIDATION
 
 ## Proof of Prompt (PoP) Validation
 
-The system prompts for both the **Decision** and **Perception** modules are validated against 9 PoP criteria. Full prompt text, criterion-by-criterion notes, and scores are in [`proof_of_prompt.json`](proof_of_prompt.json).
+The system prompts for both the **Decision** and **Perception** modules are fully validated against all 9 PoP criteria (Revision 2). Full prompt text, criterion-by-criterion notes, and scores are in [`proof_of_prompt.json`](proof_of_prompt.json).
 
 | Module | Score | Gap |
 |--------|-------|-----|
-| **Decision** | 8 / 9 | No explicit fallback when artifact is truncated |
-| **Perception** | 8 / 9 | Reasoning-type labels not explicitly tagged per step |
+| **Decision** | 9 / 9 | None (Fully satisfied; added RULE 6 with four explicit fallback sub-cases and ERROR-entry checking) |
+| **Perception** | 9 / 9 | None (Fully satisfied; added reasoning-type labels to all steps and ERROR-entry filtering) |
 
 **Shared strengths** (both prompts):
 - Unicode section dividers (`━━━`) and named rule labels for visual structure
@@ -520,6 +520,7 @@ The system prompts for both the **Decision** and **Perception** modules are vali
 - Designed for iterative multi-turn loops with full history context
 - Negative examples (`NEVER`, `Do NOT`) alongside positive instructions
 - Single exclusive output choice enforced (answer vs tool_call; action A vs action B)
+- Robust handling of failed tool calls and error-recovery states in the iteration loop
 
 See [`proof_of_prompt.json`](proof_of_prompt.json) for the full prompts and per-criterion analysis, and [`pop_validation.md`](pop_validation.md) for the evaluator rubric.
 
